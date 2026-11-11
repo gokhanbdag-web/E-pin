@@ -85,7 +85,38 @@ if($path==='login'&&$_SERVER['REQUEST_METHOD']==='POST'){csrf_check();$email=tri
 if($path==='login'){render('auth/login',['title'=>'Giriş yap']);exit;}
 if($path==='admin'||str_starts_with($path,'admin/')){require APP_ROOT.'/app/admin.php';exit;}
 if($path==='seller'||str_starts_with($path,'seller/')){if(config('business_mode')!=='multi_vendor'){http_response_code(404);exit('Sayfa bulunamadı');}require_login('seller');render('account/dashboard',['title'=>'Satıcı paneli']);exit;}
-if($path==='account'){require_login();render('account/dashboard',['title'=>'Hesabım']);exit;}
+
+if(str_starts_with($path,'account/')&&$_SERVER['REQUEST_METHOD']==='POST'){
+ require_login();csrf_check();$uid=(int)$_SESSION['user']['id'];$action=substr($path,8);
+ try{
+  if($action==='profile'){
+   $name=trim((string)($_POST['name']??''));$email=mb_strtolower(trim((string)($_POST['email']??'')));
+   if(mb_strlen($name)<2||!filter_var($email,FILTER_VALIDATE_EMAIL))throw new RuntimeException('Ad soyad ve geçerli e-posta adresi girin.');
+   db()->prepare('UPDATE users SET name=?,email=? WHERE id=?')->execute([$name,$email,$uid]);
+   $_SESSION['user']['name']=$name;$_SESSION['user']['email']=$email;flash('success','Profil bilgileriniz güncellendi.');
+  }elseif($action==='password'){
+   $current=(string)($_POST['current_password']??'');$new=(string)($_POST['new_password']??'');$confirm=(string)($_POST['confirm_password']??'');
+   $q=db()->prepare('SELECT password_hash FROM users WHERE id=?');$q->execute([$uid]);$hash=(string)$q->fetchColumn();
+   if(!password_verify($current,$hash))throw new RuntimeException('Mevcut şifreniz hatalı.');
+   if(strlen($new)<10)throw new RuntimeException('Yeni şifre en az 10 karakter olmalı.');
+   if($new!==$confirm)throw new RuntimeException('Yeni şifre tekrarı eşleşmiyor.');
+   db()->prepare('UPDATE users SET password_hash=? WHERE id=?')->execute([password_hash($new,PASSWORD_DEFAULT),$uid]);flash('success','Şifreniz değiştirildi.');
+  }elseif($action==='ticket'){
+   $subject=trim((string)($_POST['subject']??''));$message=trim((string)($_POST['message']??''));
+   if(mb_strlen($subject)<4||mb_strlen($message)<15)throw new RuntimeException('Konu en az 4, mesajınız en az 15 karakter olmalı.');
+   db()->prepare("INSERT INTO support_tickets(user_id,subject,message) VALUES(?,?,?)")->execute([$uid,mb_substr($subject,0,190),$message]);flash('success','Destek talebiniz oluşturuldu.');
+  }else{http_response_code(404);exit('İşlem bulunamadı.');}
+ }catch(PDOException $e){flash('error',$e->getCode()==='23000'?'Bu e-posta adresi başka bir hesapta kullanılıyor.':'Bilgiler kaydedilemedi. Lütfen tekrar deneyin.');}
+ catch(Throwable $e){flash('error',$e->getMessage());}
+ redirect(url('account'));
+}
+if($path==='account'){
+ require_login();$uid=(int)$_SESSION['user']['id'];
+ $q=db()->prepare('SELECT id,order_no,total,status,payment_status,created_at FROM orders WHERE user_id=? ORDER BY id DESC LIMIT 50');$q->execute([$uid]);$accountOrders=$q->fetchAll();
+ $q=db()->prepare('SELECT id,subject,message,status,admin_reply,created_at,updated_at FROM support_tickets WHERE user_id=? ORDER BY id DESC LIMIT 30');$q->execute([$uid]);$tickets=$q->fetchAll();
+ $q=db()->prepare('SELECT name,email,created_at FROM users WHERE id=?');$q->execute([$uid]);$accountUser=$q->fetch();
+ render('account/dashboard',['title'=>'Hesabım','accountUser'=>$accountUser,'accountOrders'=>$accountOrders,'tickets'=>$tickets]);exit;
+}
 if(str_starts_with($path,'page/')){$slug=substr($path,5);$st=db()->prepare("SELECT title,content FROM pages WHERE slug=? AND status='active'");$st->execute([$slug]);$page=$st->fetch();if(!$page){http_response_code(404);$page=['title'=>'Sayfa bulunamadı','content'=>''];}render('store/page',['title'=>$page['title'],'page'=>$page]);exit;}
 if(str_starts_with($path,'category/')){$slug=rawurldecode(substr($path,9));$st=db()->prepare("SELECT id,name,slug,description FROM categories WHERE slug=? AND status='active' LIMIT 1");$st->execute([$slug]);$category=$st->fetch();if(!$category){http_response_code(404);render('store/not-found',['title'=>'Kategori bulunamadı']);exit;}$st=db()->prepare("SELECT id,name,slug,short_description,price,image FROM products WHERE category_id=? AND status='active' ORDER BY sort_order,id DESC");$st->execute([(int)$category['id']]);$products=$st->fetchAll();render('store/category',['title'=>$category['name'],'category'=>$category,'products'=>$products]);exit;}
 if(str_starts_with($path,'product/')){$slug=rawurldecode(substr($path,8));$st=db()->prepare("SELECT p.*,c.name AS category_name,c.slug AS category_slug FROM products p LEFT JOIN categories c ON c.id=p.category_id WHERE p.slug=? AND p.status='active' LIMIT 1");$st->execute([$slug]);$product=$st->fetch();if(!$product){http_response_code(404);render('store/not-found',['title'=>'Ürün bulunamadı']);exit;}$related=[];if(!empty($product['category_id'])){$st=db()->prepare("SELECT id,name,slug,short_description,price,image FROM products WHERE category_id=? AND id<>? AND status='active' ORDER BY sort_order,id DESC LIMIT 4");$st->execute([(int)$product['category_id'],(int)$product['id']]);$related=$st->fetchAll();}$st=db()->prepare("SELECT COUNT(*) FROM inventory_codes WHERE product_id=? AND status='available'");$st->execute([(int)$product['id']]);$availableStock=(int)$st->fetchColumn();render('store/product',['title'=>$product['name'],'product'=>$product,'related'=>$related,'available_stock'=>$availableStock]);exit;}
