@@ -161,7 +161,7 @@ $q=db()->prepare("SELECT COALESCE(SUM(amount),0) FROM seller_ledger WHERE seller
  }
  if($path!=='seller'){http_response_code(404);exit('Sayfa bulunamadı');}
  $q=db()->prepare('SELECT COUNT(*) FROM products WHERE seller_id=?');$q->execute([(int)$sellerProfile['id']]);$sellerProductCount=(int)$q->fetchColumn();
- $q=db()->prepare("SELECT COUNT(*) FROM order_items oi JOIN products p ON p.id=oi.product_id JOIN orders o ON o.id=oi.order_id WHERE p.seller_id=? AND o.payment_status='paid'");$q->execute([(int)$sellerProfile['id']]);$sellerSalesCount=(int)$q->fetchColumn();
+ $q=db()->prepare("SELECT COALESCE(SUM(oi.quantity),0) FROM order_items oi JOIN products p ON p.id=oi.product_id JOIN orders o ON o.id=oi.order_id WHERE p.seller_id=? AND o.payment_status='paid' AND o.status<>'refunded'");$q->execute([(int)$sellerProfile['id']]);$sellerSalesCount=(int)$q->fetchColumn();
  render('seller/dashboard',['title'=>'Satıcı paneli','sellerProfile'=>$sellerProfile,'sellerProductCount'=>$sellerProductCount,'sellerSalesCount'=>$sellerSalesCount]);exit;
 }
 
