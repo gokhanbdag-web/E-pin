@@ -42,3 +42,8 @@ GitHub Actions runs PHP syntax checks. They do not replace installation tests on
 - Admin can create fixed-amount or percentage coupons, set minimum cart totals, maximum discounts, activation/expiry dates and global usage limits.
 - Coupons are validated again inside the checkout transaction; the discount is saved on the order and allocated across line items for marketplace seller commission calculations.
 - Cancelling an unpaid order releases its coupon usage. Expired reserved-stock orders also release coupon usage during bootstrap cleanup.
+
+
+### Ürün görselleri
+- Ürün formundan JPG, PNG, WEBP ve GIF dosyaları doğrudan yüklenebilir (en fazla 5 MB).
+- Dosyalar rastgele adlarla `uploads/products/` altında saklanır; SVG ve çalıştırılabilir dosyalar kabul edilmez.
