@@ -17,7 +17,7 @@ if(str_starts_with($path,'payment/start/') && $_SERVER['REQUEST_METHOD']==='POST
     $phone=trim((string)($_POST['phone']??''));$address=trim((string)($_POST['address']??''));$city=trim((string)($_POST['city']??''));$zip=trim((string)($_POST['zip']??''));
     $identity=preg_replace('/\D+/','',(string)($_POST['identity']??''));
     if(strlen($phone)<10||strlen($address)<8||$city===''||$zip===''){flash('error','Telefon ve fatura/iletişim adresi bilgilerini tamamlayın.');redirect(url('order/'.$orderId));}
-    $user=$_SESSION['user'];$orderNo=(string)$order['order_no'];$amount=(float)$order['total'];$amountText=number_format($amount,2,'.','');
+    $user=$_SESSION['user'];$orderNo=(string)$order['order_no'];$paymentReference=$orderNo.'-'.strtoupper(bin2hex(random_bytes(5)));$amount=(float)$order['total'];$amountText=number_format($amount,2,'.','');
     try{
       if($provider==='paytr'){
         if(payment_secret('paytr_enabled')!=='1')throw new RuntimeException('PayTR şu anda etkin değil.');
@@ -28,14 +28,14 @@ if(str_starts_with($path,'payment/start/') && $_SERVER['REQUEST_METHOD']==='POST
         foreach($items->fetchAll() as $it){$qty=max(1,(int)$it['quantity']);$lineNet=max(0,round((float)$it['unit_price']*$qty-(float)$it['discount_amount'],2));$basket[]=[$it['product_name'].' (x'.$qty.')',number_format($lineNet,2,'.',''),1];}
         $basketEncoded=base64_encode(json_encode($basket,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
         $test=payment_secret('paytr_sandbox')==='1'?'1':'0';$noInstallment='1';$maxInstallment='0';$currency='TL';
-        $hashStr=$merchantId.$ip.$orderNo.$user['email'].(string)round($amount*100).$basketEncoded.$noInstallment.$maxInstallment.$currency.$test.$user['name'].$address.$phone.$salt;
+        $hashStr=$merchantId.$ip.$paymentReference.$user['email'].(string)round($amount*100).$basketEncoded.$noInstallment.$maxInstallment.$currency.$test.$user['name'].$address.$phone.$salt;
         $token=base64_encode(hash_hmac('sha256',$hashStr,$merchantKey,true));
         $response=payment_http_post('https://www.paytr.com/odeme/api/get-token',[
-          'merchant_id'=>$merchantId,'user_ip'=>$ip,'merchant_oid'=>$orderNo,'email'=>$user['email'],'payment_amount'=>(string)round($amount*100),'paytr_token'=>$token,'user_basket'=>$basketEncoded,'debug_on'=>$test,'no_installment'=>$noInstallment,'max_installment'=>$maxInstallment,'user_name'=>$user['name'],'user_address'=>$address,'user_phone'=>$phone,'merchant_ok_url'=>absolute_url('order/'.$orderId),'merchant_fail_url'=>absolute_url('order/'.$orderId),'timeout_limit'=>'30','currency'=>$currency,'test_mode'=>$test,'lang'=>'tr'
+          'merchant_id'=>$merchantId,'user_ip'=>$ip,'merchant_oid'=>$paymentReference,'email'=>$user['email'],'payment_amount'=>(string)round($amount*100),'paytr_token'=>$token,'user_basket'=>$basketEncoded,'debug_on'=>$test,'no_installment'=>$noInstallment,'max_installment'=>$maxInstallment,'user_name'=>$user['name'],'user_address'=>$address,'user_phone'=>$phone,'merchant_ok_url'=>absolute_url('order/'.$orderId),'merchant_fail_url'=>absolute_url('order/'.$orderId),'timeout_limit'=>'30','currency'=>$currency,'test_mode'=>$test,'lang'=>'tr'
         ],['Content-Type: application/x-www-form-urlencoded']);
         $data=json_decode($response['body'],true);
         if(($data['status']??'')!=='success'||empty($data['token']))throw new RuntimeException('PayTR ödeme oturumu oluşturulamadı: '.($data['reason']??'Sağlayıcı yanıtı başarısız.'));
-        db()->prepare("INSERT INTO payment_transactions(order_id,provider,provider_reference,amount,status) VALUES(?,?,?,?, 'pending')")->execute([$orderId,'paytr',(string)$data['token'],$amount]);
+        db()->prepare("INSERT INTO payment_transactions(order_id,provider,provider_reference,amount,status) VALUES(?,?,?,?, 'pending')")->execute([$orderId,'paytr',$paymentReference,$amount]);
         redirect('https://www.paytr.com/odeme/guvenli/'.rawurlencode((string)$data['token']));
       } elseif($provider==='iyzico'){
         if(payment_secret('iyzico_enabled')!=='1')throw new RuntimeException('iyzico şu anda etkin değil.');
@@ -57,12 +57,12 @@ if(str_starts_with($path,'payment/start/') && $_SERVER['REQUEST_METHOD']==='POST
 if($path==='payment/paytr-callback'&&$_SERVER['REQUEST_METHOD']==='POST'){
     $post=$_POST;
     if(!paytr_callback_valid($post)){http_response_code(400);echo 'PAYTR notification failed: bad hash';exit;}
-    $orderNo=(string)($post['merchant_oid']??'');$q=db()->prepare("SELECT o.id,o.total,o.payment_status,(SELECT COUNT(*) FROM payment_transactions pt WHERE pt.order_id=o.id AND pt.provider='paytr' AND ABS(pt.amount-o.total)<0.005) AS valid_attempt FROM orders o WHERE o.order_no=?");$q->execute([$orderNo]);$o=$q->fetch();
-    if(!$o||(int)$o['valid_attempt']<1){http_response_code(404);echo 'ORDER NOT FOUND';exit;}
+    $orderNo=(string)($post['merchant_oid']??'');$q=db()->prepare("SELECT o.id,o.total,o.payment_status,pt.amount FROM payment_transactions pt JOIN orders o ON o.id=pt.order_id WHERE pt.provider='paytr' AND pt.provider_reference=? LIMIT 1");$q->execute([$orderNo]);$o=$q->fetch();
+    if(!$o||!payment_amount_matches($o['amount'],$o['total'])){http_response_code(404);echo 'ORDER NOT FOUND';exit;}
     if(($post['status']??'')==='success'){
       if(!isset($post['total_amount'])||!ctype_digit((string)$post['total_amount'])||(int)$post['total_amount']!==(int)round((float)$o['total']*100)){http_response_code(400);echo 'AMOUNT MISMATCH';exit;}
       payment_mark_paid((int)$o['id'],'paytr',$orderNo);
-    }else{db()->prepare("UPDATE orders SET payment_status='failed',status='payment_failed' WHERE id=? AND payment_status<>'paid' AND status IN ('pending','payment_failed')")->execute([(int)$o['id']]);db()->prepare("UPDATE payment_transactions SET status='failed' WHERE order_id=? AND provider='paytr' AND status='pending'")->execute([(int)$o['id']]);}
+    }else{db()->prepare("UPDATE payment_transactions SET status='failed' WHERE order_id=? AND provider='paytr' AND provider_reference=? AND status='pending'")->execute([(int)$o['id'],$orderNo]);db()->prepare("UPDATE orders SET payment_status='failed',status='payment_failed' WHERE id=? AND payment_status<>'paid' AND status IN ('pending','payment_failed') AND NOT EXISTS(SELECT 1 FROM payment_transactions WHERE order_id=? AND status='pending')")->execute([(int)$o['id'],(int)$o['id']]);}
     echo 'OK';exit;
 }
 if($path==='payment/iyzico-callback'&&$_SERVER['REQUEST_METHOD']==='POST'){
