@@ -26,8 +26,8 @@ function app_base_path_from_paths(string $appRoot,string $documentRoot,string $s
  $app=$normalize(realpath($appRoot)?:$appRoot);$doc=$normalize(realpath($documentRoot)?:$documentRoot);
  if($app!==''&&$doc!==''&&($app===$doc||str_starts_with($app,$doc.'/')))return $app===$doc?'':'/'.trim(substr($app,strlen($doc)),'/');
  $script=parse_url($scriptName,PHP_URL_PATH)?:$scriptName;$script=str_replace('\\\\','/',$script);
- $script=preg_replace('~/index\\.php(?:/.*)?$~i','',$script)??$script;
- $dir=rtrim(str_replace('\\\\','/',dirname($script)),'/.');
+ if(preg_match('~^(.*?)/index\\.php(?:/.*)?$~i',$script,$match))$dir=$match[1];else $dir=dirname($script);
+ $dir=rtrim(str_replace('\\\\','/',$dir),'/.');
  return $dir===''||$dir==='.'?'':($dir[0]==='/'?$dir:'/'.$dir);
 }
 function app_base_path():string{return app_base_path_from_paths(APP_ROOT,(string)($_SERVER['DOCUMENT_ROOT']??''),(string)($_SERVER['SCRIPT_NAME']??'/'));}
