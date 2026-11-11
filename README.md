@@ -47,3 +47,8 @@ GitHub Actions runs PHP syntax checks. They do not replace installation tests on
 ### Ürün görselleri
 - Ürün formundan JPG, PNG, WEBP ve GIF dosyaları doğrudan yüklenebilir (en fazla 5 MB).
 - Dosyalar rastgele adlarla `uploads/products/` altında saklanır; SVG ve çalıştırılabilir dosyalar kabul edilmez.
+
+
+### Ürün varyantları
+- Yönetim panelindeki Ürün varyantları bölümünden ana ürüne bağlı paket/bakiye/platform seçenekleri tanımlanabilir.
+- Her varyantın SKU kodu, bağımsız fiyatı, yayın durumu ve sıralaması bulunur. Varyant stok ve sipariş bağlantısı takip eden geliştirme aşamasında tamamlanacaktır.
