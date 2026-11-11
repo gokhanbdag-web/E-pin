@@ -51,4 +51,6 @@ GitHub Actions runs PHP syntax checks. They do not replace installation tests on
 
 ### Ürün varyantları
 - Yönetim panelindeki Ürün varyantları bölümünden ana ürüne bağlı paket/bakiye/platform seçenekleri tanımlanabilir.
-- Her varyantın SKU kodu, bağımsız fiyatı, yayın durumu ve sıralaması bulunur. Varyant stok ve sipariş bağlantısı takip eden geliştirme aşamasında tamamlanacaktır.
+- Her varyantın SKU kodu, bağımsız fiyatı, yayın durumu ve sıralaması bulunur. Ürün sayfasında seçenek seçimi yapılır; varyant fiyatı sepete ve sipariş kalemine aktarılır. Otomatik e-pin kodları varyant bazında yüklenir, rezerve edilir ve ödeme doğrulamasından sonra teslim edilir.
+
+- Stok yönetimi ekranında ana ürün veya seçilen varyant için şifreli dijital kod içe aktarımı ve stok sayımı yapılabilir.
