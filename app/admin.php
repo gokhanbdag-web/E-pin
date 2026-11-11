@@ -11,7 +11,7 @@ $meta=[
 'menus'=>['title'=>'Menüler','table'=>'menus','fields'=>['title'=>'Menü başlığı','url'=>'Bağlantı','location'=>'Konum','sort_order'=>'Sıralama','status'=>'Durum']]
 ];
 if(config('business_mode')!=='multi_vendor'&&$resource==='sellers')$resource='overview';
-if(!isset($meta[$resource])&&!in_array($resource,['overview','settings','inventory','payments','orders','refunds','tickets','sellers','seller_payments'],true))$resource='overview';
+if(!isset($meta[$resource])&&!in_array($resource,['overview','reports','settings','inventory','payments','orders','refunds','tickets','sellers','seller_payments'],true))$resource='overview';
 if($_SERVER['REQUEST_METHOD']==='POST'){csrf_check();$action=(string)($_POST['action']??'');try{
  if($resource==='sellers'&&config('business_mode')==='multi_vendor'&&$action==='review'){
  $id=(int)($_POST['id']??0);$decision=(string)($_POST['decision']??'');
@@ -85,6 +85,26 @@ $orderRows=[];$orderDetail=null;$orderDetailItems=[];if($resource==='orders'){$o
 $ticketRows=[];if($resource==='tickets'){$ticketRows=db()->query("SELECT t.*,u.name AS customer_name,u.email AS customer_email FROM support_tickets t JOIN users u ON u.id=t.user_id ORDER BY t.id DESC LIMIT 300")->fetchAll();}
 $inventoryProducts=[];$inventoryVariants=[];$inventoryRows=[];if($resource==='inventory'){$inventoryProducts=db()->query("SELECT id,name FROM products ORDER BY name")->fetchAll();$inventoryVariants=db()->query("SELECT id,product_id,name FROM product_variants WHERE status='active' ORDER BY name")->fetchAll();$inventoryRows=db()->query("SELECT p.id,p.name,p.delivery_type,v.name AS variant_name,SUM(i.status='available') AS available,SUM(i.status='reserved') AS reserved,SUM(i.status='sold') AS sold FROM products p LEFT JOIN product_variants v ON v.product_id=p.id LEFT JOIN inventory_codes i ON i.product_id=p.id AND ((i.variant_id IS NULL AND v.id IS NULL) OR i.variant_id=v.id) GROUP BY p.id,p.name,p.delivery_type,v.id,v.name ORDER BY p.name,v.sort_order,v.name")->fetchAll();}
 if($resource==='settings'||$resource==='payments')foreach(db()->query('SELECT setting_key,setting_value FROM settings')->fetchAll() as $r)$settings[$r['setting_key']]=$r['setting_value'];
+
+$reportRows=[];$reportSummary=['orders'=>0,'paid_orders'=>0,'revenue'=>0.0,'discounts'=>0.0];
+$reportStart=(string)($_GET['start_date']??date('Y-m-d',strtotime('-29 days')));
+$reportEnd=(string)($_GET['end_date']??date('Y-m-d'));
+if($resource==='reports'){
+ $validDate=static function(string $value):bool{return (bool)preg_match('/^\d{4}-\d{2}-\d{2}$/',$value)&&strtotime($value)!==false&&date('Y-m-d',strtotime($value))===$value;};
+ if(!$validDate($reportStart)||!$validDate($reportEnd)||$reportStart>$reportEnd)throw new RuntimeException('Rapor tarih aralığı geçersiz.');
+ if((strtotime($reportEnd)-strtotime($reportStart))/86400>366)throw new RuntimeException('Tek rapor aralığı en fazla 366 gün olabilir.');
+ $stmt=db()->prepare("SELECT o.id,o.order_no,o.total,COALESCE(o.discount_total,0) AS discount_total,o.coupon_code,o.status,o.payment_status,o.created_at,u.name AS customer_name,u.email AS customer_email,(SELECT pt.provider FROM payment_transactions pt WHERE pt.order_id=o.id ORDER BY pt.id DESC LIMIT 1) AS payment_provider FROM orders o JOIN users u ON u.id=o.user_id WHERE o.created_at>=? AND o.created_at<DATE_ADD(?,INTERVAL 1 DAY) ORDER BY o.created_at DESC,o.id DESC");
+ $stmt->execute([$reportStart,$reportEnd]);$reportRows=$stmt->fetchAll();
+ foreach($reportRows as $row){$reportSummary['orders']++;$reportSummary['discounts']+=(float)$row['discount_total'];if($row['payment_status']==='paid'&&$row['status']!=='refunded'){$reportSummary['paid_orders']++;$reportSummary['revenue']+=(float)$row['total'];}}
+ if(($_GET['export']??'')==='csv'){
+  header('Content-Type: text/csv; charset=UTF-8');header('Content-Disposition: attachment; filename="e-pin-sales-'.$reportStart.'-'.$reportEnd.'.csv"');header('X-Content-Type-Options: nosniff');
+  $out=fopen('php://output','w');fwrite($out,chr(239).chr(187).chr(191));
+  fputcsv($out,['Sipariş No','Müşteri','E-posta','Toplam','İndirim','Kupon','Ödeme Durumu','Sipariş Durumu','Ödeme Sağlayıcısı','Tarih'],';');
+  foreach($reportRows as $row){$safe=static function($value):string{$value=(string)$value;return preg_match('/^[=+@\- \t\r]/',$value)?"'".$value:$value;};fputcsv($out,[$safe($row['order_no']),$safe($row['customer_name']),$safe($row['customer_email']),number_format((float)$row['total'],2,'.',''),number_format((float)$row['discount_total'],2,'.',''),$safe($row['coupon_code']??''),$safe($row['payment_status']),$safe($row['status']),$safe($row['payment_provider']??''),$safe($row['created_at'])],';');}
+  fclose($out);exit;
+ }
+}
+
 $recentOrders=[];$revenueChart=[];$orderStatusChart=[];$bestSellingProducts=[];if($resource==='overview'){
  foreach(['Kullanıcı'=>'users','Kategori'=>'categories','Ürün'=>'products','Sipariş'=>'orders'] as $label=>$table)$stats[$label]=(int)db()->query('SELECT COUNT(*) FROM '.$table)->fetchColumn();
  $stats['Yayındaki ürün']=(int)db()->query("SELECT COUNT(*) FROM products WHERE status='active'")->fetchColumn();
@@ -98,4 +118,4 @@ $recentOrders=[];$revenueChart=[];$orderStatusChart=[];$bestSellingProducts=[];i
  $recentOrders=db()->query("SELECT o.id,o.order_no,o.total,o.status,o.payment_status,o.created_at,u.name AS customer_name FROM orders o JOIN users u ON u.id=o.user_id ORDER BY o.id DESC LIMIT 8")->fetchAll();
  $bestSellingProducts=db()->query("SELECT oi.product_name,SUM(oi.quantity) AS units_sold,SUM((oi.unit_price*oi.quantity)-COALESCE(oi.discount_amount,0)) AS net_sales,COUNT(DISTINCT oi.order_id) AS order_count FROM order_items oi JOIN orders o ON o.id=oi.order_id WHERE o.payment_status='paid' AND o.status<>'refunded' GROUP BY oi.product_id,oi.product_name ORDER BY units_sold DESC,net_sales DESC LIMIT 5")->fetchAll();
 }
-render('admin/manage',['title'=>$meta[$resource]['title']??($resource==='settings'?'Mağaza ayarları':($resource==='payments'?'Ödeme ayarları':($resource==='orders'?'Siparişler':($resource==='sellers'?'Satıcı başvuruları':($resource==='seller_payments'?'Satıcı ödemeleri':'Genel bakış'))))),'resource'=>$resource,'meta'=>$meta,'rows'=>$rows,'edit'=>$edit,'categories'=>$categories,'settings'=>$settings,'stats'=>$stats,'recentOrders'=>$recentOrders,'revenueChart'=>$revenueChart,'orderStatusChart'=>$orderStatusChart,'bestSellingProducts'=>$bestSellingProducts,'inventoryProducts'=>$inventoryProducts,'inventoryRows'=>$inventoryRows,'sellerRows'=>$sellerRows,'paymentSettings'=>['paytr_enabled'=>payment_secret('paytr_enabled'),'paytr_sandbox'=>payment_secret('paytr_sandbox'),'paytr_merchant_id'=>payment_secret('paytr_merchant_id'),'iyzico_enabled'=>payment_secret('iyzico_enabled'),'iyzico_sandbox'=>payment_secret('iyzico_sandbox')],'ticketRows'=>$ticketRows,'withdrawalRows'=>$withdrawalRows??[],'refundRows'=>$refundRows??[],'orderDetail'=>$orderDetail??null,'orderDetailItems'=>$orderDetailItems??[]]);
+render('admin/manage',['title'=>$meta[$resource]['title']??($resource==='settings'?'Mağaza ayarları':($resource==='payments'?'Ödeme ayarları':($resource==='orders'?'Siparişler':($resource==='sellers'?'Satıcı başvuruları':($resource==='seller_payments'?'Satıcı ödemeleri':'Genel bakış'))))),'resource'=>$resource,'meta'=>$meta,'rows'=>$rows,'edit'=>$edit,'categories'=>$categories,'settings'=>$settings,'stats'=>$stats,'recentOrders'=>$recentOrders,'revenueChart'=>$revenueChart,'orderStatusChart'=>$orderStatusChart,'bestSellingProducts'=>$bestSellingProducts,'reportRows'=>$reportRows,'reportSummary'=>$reportSummary,'reportStart'=>$reportStart,'reportEnd'=>$reportEnd,'inventoryProducts'=>$inventoryProducts,'inventoryRows'=>$inventoryRows,'sellerRows'=>$sellerRows,'paymentSettings'=>['paytr_enabled'=>payment_secret('paytr_enabled'),'paytr_sandbox'=>payment_secret('paytr_sandbox'),'paytr_merchant_id'=>payment_secret('paytr_merchant_id'),'iyzico_enabled'=>payment_secret('iyzico_enabled'),'iyzico_sandbox'=>payment_secret('iyzico_sandbox')],'ticketRows'=>$ticketRows,'withdrawalRows'=>$withdrawalRows??[],'refundRows'=>$refundRows??[],'orderDetail'=>$orderDetail??null,'orderDetailItems'=>$orderDetailItems??[]]);
