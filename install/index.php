@@ -11,6 +11,10 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
   if(!in_array($mode,['single_vendor','multi_vendor'],true))throw new RuntimeException('Geçerli bir işletme modeli seçin.');
   if(!$name||!$user||!$adminName||!filter_var($email,FILTER_VALIDATE_EMAIL)||strlen($adminPass)<10)throw new RuntimeException('Zorunlu alanları doldurun. Yönetici şifresi en az 10 karakter olmalı.');
   $pdo=new PDO('mysql:host='.$host.';dbname='.$name.';charset=utf8mb4',$user,$pass,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
+  // Refuse to install into a non-empty database. IF NOT EXISTS alone can silently
+  // adopt unrelated tables and the admin upsert below could elevate an existing account.
+  $existingTables=$pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
+  if($existingTables)throw new RuntimeException('Güvenlik nedeniyle kurulum yalnızca boş bir veritabanında yapılabilir. Mevcut tabloları silmeyin; yeni ve boş bir veritabanı oluşturup tekrar deneyin.');
   $sql=[
   "CREATE TABLE IF NOT EXISTS users(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,name VARCHAR(150) NOT NULL,email VARCHAR(190) NOT NULL UNIQUE,password_hash VARCHAR(255) NOT NULL,role VARCHAR(30) NOT NULL DEFAULT 'customer',status VARCHAR(20) NOT NULL DEFAULT 'active',created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
   "CREATE TABLE IF NOT EXISTS settings(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,setting_key VARCHAR(190) NOT NULL UNIQUE,setting_value LONGTEXT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
