@@ -34,11 +34,32 @@ function payment_http_post(string $url,array $payload,array $headers=[]):array {
     if($body===false) throw new RuntimeException('Ödeme sağlayıcısına bağlanılamadı: '.$err);
     return ['status'=>$status,'body'=>(string)$body];
 }
+function cancel_unpaid_order(int $orderId,?int $ownerId=null):void {
+    $pdo=db();$pdo->beginTransaction();
+    try {
+        $sql='SELECT id,payment_status,status FROM orders WHERE id=?'.($ownerId!==null?' AND user_id=?':'').' FOR UPDATE';
+        $q=$pdo->prepare($sql);$q->execute($ownerId!==null?[$orderId,$ownerId]:[$orderId]);$order=$q->fetch();
+        if(!$order)throw new RuntimeException('Sipariş bulunamadı.');
+        if($order['payment_status']==='paid')throw new RuntimeException('Ödemesi alınmış sipariş iptal edilemez; iade talebi oluşturun.');
+        if(!in_array($order['status'],['pending','payment_failed'],true))throw new RuntimeException('Bu sipariş artık iptal edilemez.');
+        $pdo->prepare("UPDATE inventory_codes SET status='available',reserved_order_id=NULL,reserved_until=NULL WHERE reserved_order_id=? AND status='reserved'")->execute([$orderId]);
+        $pdo->prepare("UPDATE orders SET status='cancelled' WHERE id=?")->execute([$orderId]);
+        $pdo->prepare("UPDATE payment_transactions SET status='cancelled' WHERE order_id=? AND status='pending'")->execute([$orderId]);
+        $pdo->commit();
+    } catch(Throwable $e) {if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+}
 function payment_mark_paid(int $orderId,string $provider,string $reference=''):void {
     $pdo=db();$pdo->beginTransaction();
     try {
-        $q=$pdo->prepare('SELECT id,payment_status FROM orders WHERE id=? FOR UPDATE');$q->execute([$orderId]);$o=$q->fetch();
+        $q=$pdo->prepare('SELECT id,payment_status,status FROM orders WHERE id=? FOR UPDATE');$q->execute([$orderId]);$o=$q->fetch();
         if(!$o) throw new RuntimeException('Sipariş bulunamadı.');
+        if($o['payment_status']!=='paid' && in_array($o['status'],['cancelled','expired'],true)) {
+            $pdo->prepare("UPDATE orders SET payment_status='paid',status='manual_review' WHERE id=?")->execute([$orderId]);
+            $pdo->prepare("UPDATE payment_transactions SET status='success' WHERE order_id=? AND provider=?")->execute([$orderId,$provider]);
+            $pdo->commit();
+            error_log('Late payment for cancelled/expired order '.$orderId.' requires manual review.');
+            return;
+        }
         if($o['payment_status']!=='paid') {
             $pdo->prepare("UPDATE orders SET payment_status='paid',status='processing' WHERE id=?")->execute([$orderId]);
             $pdo->prepare("UPDATE payment_transactions SET status='success' WHERE order_id=? AND provider=?")->execute([$orderId,$provider]);
