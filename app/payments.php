@@ -58,6 +58,7 @@ function payment_mark_paid(int $orderId,string $provider,string $reference=''):v
         $q=$pdo->prepare('SELECT id,payment_status,status,coupon_code FROM orders WHERE id=? FOR UPDATE');$q->execute([$orderId]);$o=$q->fetch();
         if(!$o) throw new RuntimeException('Sipariş bulunamadı.');
         if($o['payment_status']!=='paid' && in_array($o['status'],['cancelled','expired'],true)) {
+            if(!empty($o['coupon_code']))$pdo->prepare('UPDATE coupons SET usage_count=usage_count+1 WHERE code=?')->execute([$o['coupon_code']]);
             $pdo->prepare("UPDATE orders SET payment_status='paid',status='manual_review' WHERE id=?")->execute([$orderId]);
             $pdo->prepare("UPDATE payment_transactions SET status='success' WHERE order_id=? AND provider=?")->execute([$orderId,$provider]);
             $pdo->commit();
