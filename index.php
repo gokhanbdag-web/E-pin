@@ -81,10 +81,46 @@ if($path==='cart/remove'&&$_SERVER['REQUEST_METHOD']==='POST'){csrf_check();unse
 if($path==='cart'){$cart=[];$total=0;foreach(($_SESSION['cart']??[]) as $pid=>$qty){$st=db()->prepare("SELECT id,name,slug,price,image,delivery_type FROM products WHERE id=? AND status='active'");$st->execute([(int)$pid]);if($p=$st->fetch()){$p['quantity']=(int)$qty;$p['line_total']=(float)$p['price']*$p['quantity'];$total+=$p['line_total'];$cart[]=$p;}else unset($_SESSION['cart'][$pid]);}render('store/cart',['title'=>'Alışveriş sepetim','cart'=>$cart,'total'=>$total]);exit;}
 if($path==='checkout'){require_login();if($_SERVER['REQUEST_METHOD']==='POST'){csrf_check();$cart=$_SESSION['cart']??[];if(!$cart){flash('error','Sepetiniz boş.');redirect(url('cart'));}$pdo=db();$pdo->beginTransaction();try{$items=[];$total=0;foreach($cart as $pid=>$qty){$st=$pdo->prepare("SELECT id,name,price,delivery_type,status FROM products WHERE id=? AND status='active' FOR UPDATE");$st->execute([(int)$pid]);$p=$st->fetch();if(!$p)throw new RuntimeException('Sepetinizde yayından kaldırılmış bir ürün var.');$qty=max(1,min(20,(int)$qty));$items[]=$p+['quantity'=>$qty];$total+=(float)$p['price']*$qty;}$orderNo='EP'.date('ymd').strtoupper(bin2hex(random_bytes(4)));$st=$pdo->prepare("INSERT INTO orders(user_id,order_no,subtotal,total,status,payment_status) VALUES(?,?,?,?, 'pending','unpaid')");$st->execute([(int)$_SESSION['user']['id'],$orderNo,$total,$total]);$orderId=(int)$pdo->lastInsertId();$ins=$pdo->prepare("INSERT INTO order_items(order_id,product_id,product_name,quantity,unit_price) VALUES(?,?,?,?,?)");foreach($items as $p){$ins->execute([$orderId,(int)$p['id'],$p['name'],(int)$p['quantity'],$p['price']]);if($p['delivery_type']==='automatic'){$q=(int)$p['quantity'];$lock=$pdo->prepare("SELECT id FROM inventory_codes WHERE product_id=? AND status='available' ORDER BY id LIMIT ".$q." FOR UPDATE");$lock->execute([(int)$p['id']]);$ids=$lock->fetchAll(PDO::FETCH_COLUMN);if(count($ids)<$q)throw new RuntimeException($p['name'].' için yeterli kod stoğu kalmadı.');$reserve=$pdo->prepare("UPDATE inventory_codes SET status='reserved',reserved_order_id=?,reserved_until=DATE_ADD(NOW(),INTERVAL 30 MINUTE) WHERE id=? AND status='available'");foreach($ids as $id)$reserve->execute([$orderId,(int)$id]);}}$pdo->commit();$_SESSION['cart']=[];redirect(url('order/'.$orderId));}catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();flash('error',$e->getMessage());redirect(url('cart'));}}render('store/checkout',['title'=>'Siparişi onayla']);exit;}
 if(str_starts_with($path,'order/')){require_login();$orderId=(int)substr($path,6);$st=db()->prepare("SELECT * FROM orders WHERE id=? AND user_id=?");$st->execute([$orderId,(int)$_SESSION['user']['id']]);$order=$st->fetch();if(!$order){http_response_code(404);render('store/not-found',['title'=>'Sipariş bulunamadı']);exit;}$st=db()->prepare("SELECT oi.*,p.delivery_type FROM order_items oi LEFT JOIN products p ON p.id=oi.product_id WHERE oi.order_id=?");$st->execute([$orderId]);$orderItems=$st->fetchAll();$st=db()->prepare("SELECT * FROM inventory_codes WHERE sold_order_id=? AND status='sold' ORDER BY id");$st->execute([$orderId]);$deliveredCodes=$st->fetchAll();render('store/order',['title'=>'Sipariş bilgisi','order'=>$order,'orderItems'=>$orderItems,'deliveredCodes'=>$deliveredCodes]);exit;}
-if($path==='login'&&$_SERVER['REQUEST_METHOD']==='POST'){csrf_check();$email=trim((string)($_POST['email']??''));$st=db()->prepare('SELECT id,name,email,password_hash,role,status FROM users WHERE email=? LIMIT 1');$st->execute([$email]);$u=$st->fetch();if($u&&$u['status']==='active'&&password_verify((string)($_POST['password']??''),$u['password_hash'])){session_regenerate_id(true);$_SESSION['user']=['id'=>(int)$u['id'],'name'=>$u['name'],'email'=>$u['email'],'role'=>$u['role']];redirect(url($u['role']==='admin'?'admin':'account'));}flash('error','Giriş bilgileri doğrulanamadı.');redirect(url('login'));}
+if($path==='login'&&$_SERVER['REQUEST_METHOD']==='POST'){csrf_check();$email=trim((string)($_POST['email']??''));$st=db()->prepare('SELECT id,name,email,password_hash,role,status FROM users WHERE email=? LIMIT 1');$st->execute([$email]);$u=$st->fetch();if($u&&$u['status']==='active'&&password_verify((string)($_POST['password']??''),$u['password_hash'])){session_regenerate_id(true);$_SESSION['user']=['id'=>(int)$u['id'],'name'=>$u['name'],'email'=>$u['email'],'role'=>$u['role']];redirect(url($u['role']==='admin'?'admin':($u['role']==='seller'?'seller':'account')));}flash('error','Giriş bilgileri doğrulanamadı.');redirect(url('login'));}
 if($path==='login'){render('auth/login',['title'=>'Giriş yap']);exit;}
 if($path==='admin'||str_starts_with($path,'admin/')){require APP_ROOT.'/app/admin.php';exit;}
-if($path==='seller'||str_starts_with($path,'seller/')){if(config('business_mode')!=='multi_vendor'){http_response_code(404);exit('Sayfa bulunamadı');}require_login('seller');render('account/dashboard',['title'=>'Satıcı paneli']);exit;}
+if($path==='seller/apply'){
+ if(config('business_mode')!=='multi_vendor'){http_response_code(404);exit('Sayfa bulunamadı');}
+ require_login();
+ if(($_SESSION['user']['role']??'')==='admin')redirect(url('admin'));
+ $uid=(int)$_SESSION['user']['id'];
+ $q=db()->prepare('SELECT * FROM seller_profiles WHERE user_id=? LIMIT 1');$q->execute([$uid]);$sellerApplication=$q->fetch()?:null;
+ if($_SERVER['REQUEST_METHOD']==='POST'){
+  csrf_check();
+  try{
+   $shop=trim((string)($_POST['shop_name']??''));
+   if(strlen($shop)<3||strlen($shop)>190)throw new RuntimeException('Mağaza adı 3–190 karakter arasında olmalı.');
+   $ascii=function_exists('iconv')?iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$shop):$shop;
+   $slug=trim(preg_replace('/[^a-z0-9]+/','-',strtolower($ascii?:$shop)),'-');
+   if($slug==='')$slug='magaza';
+   $slug=substr($slug,0,150).'-'.$uid;
+   if($sellerApplication){
+    if($sellerApplication['status']==='approved')throw new RuntimeException('Satıcı hesabınız zaten onaylanmış.');
+    db()->prepare("UPDATE seller_profiles SET shop_name=?,shop_slug=?,status='pending' WHERE user_id=?")->execute([$shop,$slug,$uid]);
+   }else{
+    db()->prepare("INSERT INTO seller_profiles(user_id,shop_name,shop_slug,status) VALUES(?,?,?,'pending')")->execute([$uid,$shop,$slug]);
+   }
+   flash('success','Satıcılık başvurunuz yönetici onayına gönderildi.');
+   redirect(url('seller/apply'));
+  }catch(Throwable $e){flash('error',$e->getMessage());redirect(url('seller/apply'));}
+ }
+ render('seller/apply',['title'=>'Satıcı başvurusu','sellerApplication'=>$sellerApplication]);exit;
+}
+if($path==='seller'||str_starts_with($path,'seller/')){
+ if(config('business_mode')!=='multi_vendor'){http_response_code(404);exit('Sayfa bulunamadı');}
+ require_login('seller');
+ $q=db()->prepare("SELECT * FROM seller_profiles WHERE user_id=? AND status='approved' LIMIT 1");$q->execute([(int)$_SESSION['user']['id']]);$sellerProfile=$q->fetch();
+ if(!$sellerProfile){http_response_code(403);exit('Satıcı hesabınız aktif değil.');}
+ if($path!=='seller'){http_response_code(404);exit('Sayfa bulunamadı');}
+ $q=db()->prepare('SELECT COUNT(*) FROM products WHERE seller_id=?');$q->execute([(int)$sellerProfile['id']]);$sellerProductCount=(int)$q->fetchColumn();
+ $q=db()->prepare("SELECT COUNT(*) FROM order_items oi JOIN products p ON p.id=oi.product_id JOIN orders o ON o.id=oi.order_id WHERE p.seller_id=? AND o.payment_status='paid'");$q->execute([(int)$sellerProfile['id']]);$sellerSalesCount=(int)$q->fetchColumn();
+ render('seller/dashboard',['title'=>'Satıcı paneli','sellerProfile'=>$sellerProfile,'sellerProductCount'=>$sellerProductCount,'sellerSalesCount'=>$sellerSalesCount]);exit;
+}
 
 if(str_starts_with($path,'account/')&&$_SERVER['REQUEST_METHOD']==='POST'){
  require_login();csrf_check();$uid=(int)$_SESSION['user']['id'];$action=substr($path,8);
