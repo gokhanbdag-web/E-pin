@@ -26,6 +26,10 @@ function payment_secret(string $name): string {
     $plain=openssl_decrypt(substr($raw,28),'aes-256-gcm',$key,OPENSSL_RAW_DATA,substr($raw,0,12),substr($raw,12,16));
     return $plain===false?'':$plain;
 }
+function payment_amount_matches(mixed $left,mixed $right):bool {
+    if(!is_numeric($left)||!is_numeric($right)) return false;
+    return (int)round((float)$left*100)===(int)round((float)$right*100);
+}
 function payment_http_post(string $url,array $payload,array $headers=[]):array {
     if(!function_exists('curl_init')) throw new RuntimeException('Ödeme bağlantısı için sunucuda PHP cURL eklentisi etkin olmalı.');
     $ch=curl_init($url);
