@@ -105,3 +105,5 @@
 .game-slide[data-effect="zoom"] .game-slide-image{transform:scale(1.13);transition:transform 6.8s cubic-bezier(.2,.65,.2,1)}
 .game-slide[data-effect="zoom"].is-active .game-slide-image{transform:scale(1.02)}
 @media(prefers-reduced-motion:reduce){.game-slide[data-effect="slide"],.game-slide[data-effect="zoom"] .game-slide-image{transform:none!important;transition:none!important}}
+
+.nav-logout-form{display:inline-flex;margin:0}.nav-logout{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:left}
