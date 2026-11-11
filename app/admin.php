@@ -11,7 +11,7 @@ $meta=[
 'menus'=>['title'=>'Menüler','table'=>'menus','fields'=>['title'=>'Menü başlığı','url'=>'Bağlantı','location'=>'Konum','sort_order'=>'Sıralama','status'=>'Durum']]
 ];
 if(config('business_mode')!=='multi_vendor'&&$resource==='sellers')$resource='overview';
-if(!isset($meta[$resource])&&!in_array($resource,['overview','reports','settings','inventory','payments','orders','refunds','tickets','sellers','seller_payments','demo'],true))$resource='overview';
+if(!isset($meta[$resource])&&!in_array($resource,['overview','reports','settings','slider','inventory','payments','orders','refunds','tickets','sellers','seller_payments','demo'],true))$resource='overview';
 if($_SERVER['REQUEST_METHOD']==='POST'){csrf_check();$action=(string)($_POST['action']??'');try{
  if($resource==='sellers'&&config('business_mode')==='multi_vendor'&&$action==='review'){
  $id=(int)($_POST['id']??0);$decision=(string)($_POST['decision']??'');
@@ -118,7 +118,36 @@ elseif($resource==='inventory'&&$action==='import_codes'){$productId=(int)($_POS
  }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
 }
 
- elseif($resource==='settings'&&$action==='save'){$st=db()->prepare('INSERT INTO settings(setting_key,setting_value) VALUES(?,?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)');foreach(['site_title','home_heading','home_description','footer_text'] as $k)$st->execute([$k,trim((string)($_POST[$k]??''))]);flash('success','Mağaza ayarları kaydedildi.');}
+ elseif($resource==='slider'&&$action==='save'){
+  $submitted=$_POST['slides']??[];if(!is_array($submitted))throw new RuntimeException('Slider verileri geçersiz.');
+  $currentRaw=db()->prepare("SELECT setting_value FROM settings WHERE setting_key='slider_slides_json'");$currentRaw->execute();$current=json_decode((string)$currentRaw->fetchColumn(),true);if(!is_array($current))$current=[];
+  $slides=[];$uploadDir=APP_ROOT.'/uploads/slides';
+  foreach(array_slice($submitted,0,10,true) as $key=>$row){
+   if(!is_array($row))continue;
+   $id=(string)($row['id']??'');$old=null;foreach($current as $candidate){if(is_array($candidate)&&$id!==''&&hash_equals((string)($candidate['id']??''),$id)){$old=$candidate;break;}}
+   if(!empty($row['delete']))continue;
+   $title=trim((string)($row['title']??''));$description=trim((string)($row['description']??''));$image=trim((string)($row['image']??''));$link=trim((string)($row['link']??''));$button=trim((string)($row['button']??''));$sort=(int)($row['sort_order']??0);
+   $file=$_FILES['slide_images']??null;$error=$file['error'][$key]??UPLOAD_ERR_NO_FILE;
+   if($error!==UPLOAD_ERR_NO_FILE){
+    if($error!==UPLOAD_ERR_OK)throw new RuntimeException('Slider görseli yüklenirken hata oluştu.');
+    $tmp=(string)($file['tmp_name'][$key]??'');if((int)($file['size'][$key]??0)>5242880)throw new RuntimeException('Slider görseli en fazla 5 MB olabilir.');
+    if(!is_uploaded_file($tmp))throw new RuntimeException('Geçersiz slider görseli.');
+    $finfo=new finfo(FILEINFO_MIME_TYPE);$mime=$finfo->file($tmp);$types=['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp','image/gif'=>'gif'];
+    if(!isset($types[$mime])||!@getimagesize($tmp))throw new RuntimeException('JPG, PNG, WEBP veya GIF görseli yükleyin.');
+    if(!is_dir($uploadDir)&&!mkdir($uploadDir,0755,true)&&!is_dir($uploadDir))throw new RuntimeException('Slider görsel klasörü oluşturulamadı.');
+    $name=bin2hex(random_bytes(16)).'.'.$types[$mime];if(!move_uploaded_file($tmp,$uploadDir.'/'.$name))throw new RuntimeException('Slider görseli kaydedilemedi.');$image='uploads/slides/'.$name;
+   }elseif($image===''&&$old){$image=(string)($old['image']??'');}
+   if($title===''&&$description===''&&$image===''&&$link==='')continue;
+   if($title===''||strlen($title)>180)throw new RuntimeException('Her slayta 1–180 karakterlik başlık girin.');
+   if(strlen($description)>600)throw new RuntimeException('Slider açıklaması en fazla 600 karakter olabilir.');
+   if($link==='')$link='#';
+   if(preg_match('~^(javascript:|data:)~i',$link)||!preg_match('~^(https?://|/|#|[a-zA-Z0-9_-])~',$link))throw new RuntimeException('Slider bağlantısı geçersiz.');
+   $slides[]=['id'=>$id!==''?$id:bin2hex(random_bytes(8)),'title'=>$title,'description'=>$description,'image'=>$image,'link'=>$link,'button'=>$button!==''?substr($button,0,60):'HEMEN KEŞFET','sort_order'=>$sort,'active'=>isset($row['active'])?1:0];
+  }
+  usort($slides,static fn($a,$b)=>($a['sort_order']<=>$b['sort_order'])?:strcmp($a['id'],$b['id']));
+  db()->prepare('INSERT INTO settings(setting_key,setting_value) VALUES(?,?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)')->execute(['slider_slides_json',json_encode($slides,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)]);
+  flash('success','Slider vitrin kayıtları kaydedildi.');
+ } elseif($resource==='settings'&&$action==='save'){$st=db()->prepare('INSERT INTO settings(setting_key,setting_value) VALUES(?,?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)');foreach(['site_title','home_heading','home_description','footer_text'] as $k)$st->execute([$k,trim((string)($_POST[$k]??''))]);flash('success','Mağaza ayarları kaydedildi.');}
  elseif(isset($meta[$resource])&&$action==='save'){$m=$meta[$resource];$id=(int)($_POST['id']??0);$data=[];$uploadedImage=null;
 if($resource==='products'&&!empty($_FILES['image_file'])&&($_FILES['image_file']['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_NO_FILE){
 $file=$_FILES['image_file'];if(($file['error']??UPLOAD_ERR_OK)!==UPLOAD_ERR_OK)throw new RuntimeException('Görsel yüklenirken hata oluştu.');
@@ -150,8 +179,9 @@ $refundRows=[];if($resource==='refunds'){$refundRows=db()->query("SELECT r.*,o.o
 $orderRows=[];$orderDetail=null;$orderDetailItems=[];if($resource==='orders'){$orderRows=db()->query("SELECT o.*,u.name AS customer_name,u.email AS customer_email,(SELECT provider FROM payment_transactions pt WHERE pt.order_id=o.id ORDER BY pt.id DESC LIMIT 1) AS payment_provider FROM orders o JOIN users u ON u.id=o.user_id ORDER BY o.id DESC LIMIT 300")->fetchAll();if(isset($_GET['view'])){$oid=(int)$_GET['view'];$q=db()->prepare('SELECT o.*,u.name AS customer_name,u.email AS customer_email FROM orders o JOIN users u ON u.id=o.user_id WHERE o.id=?');$q->execute([$oid]);$orderDetail=$q->fetch()?:null;if($orderDetail){$q=db()->prepare("SELECT oi.*,COALESCE(p.delivery_type,'manual') AS delivery_type,(SELECT COUNT(*) FROM order_deliveries d WHERE d.order_item_id=oi.id) AS delivered_count,(SELECT COUNT(*) FROM inventory_codes i WHERE i.product_id=oi.product_id AND ((i.variant_id IS NULL AND oi.variant_id IS NULL) OR i.variant_id=oi.variant_id) AND i.sold_order_id=oi.order_id AND i.status='sold') AS automatic_delivered_count FROM order_items oi LEFT JOIN products p ON p.id=oi.product_id WHERE oi.order_id=? ORDER BY oi.id");$q->execute([$oid]);$orderDetailItems=$q->fetchAll();}}}
 $ticketRows=[];if($resource==='tickets'){$ticketRows=db()->query("SELECT t.*,u.name AS customer_name,u.email AS customer_email FROM support_tickets t JOIN users u ON u.id=t.user_id ORDER BY t.id DESC LIMIT 300")->fetchAll();}
 $inventoryProducts=[];$inventoryVariants=[];$inventoryRows=[];if($resource==='inventory'){$inventoryProducts=db()->query("SELECT id,name FROM products ORDER BY name")->fetchAll();$inventoryVariants=db()->query("SELECT id,product_id,name FROM product_variants WHERE status='active' ORDER BY name")->fetchAll();$inventoryRows=db()->query("SELECT p.id,p.name,p.delivery_type,v.name AS variant_name,SUM(i.status='available') AS available,SUM(i.status='reserved') AS reserved,SUM(i.status='sold') AS sold FROM products p LEFT JOIN product_variants v ON v.product_id=p.id LEFT JOIN inventory_codes i ON i.product_id=p.id AND ((i.variant_id IS NULL AND v.id IS NULL) OR i.variant_id=v.id) GROUP BY p.id,p.name,p.delivery_type,v.id,v.name ORDER BY p.name,v.sort_order,v.name")->fetchAll();}
-if($resource==='settings'||$resource==='payments')foreach(db()->query('SELECT setting_key,setting_value FROM settings')->fetchAll() as $r)$settings[$r['setting_key']]=$r['setting_value'];
+if(in_array($resource,['settings','payments','slider'],true))foreach(db()->query('SELECT setting_key,setting_value FROM settings')->fetchAll() as $r)$settings[$r['setting_key']]=$r['setting_value'];
 
+$sliderSlides=[];if($resource==='slider'){$decoded=json_decode((string)($settings['slider_slides_json']??'[]'),true);if(is_array($decoded))$sliderSlides=$decoded;}
 $reportRows=[];$reportSummary=['orders'=>0,'paid_orders'=>0,'revenue'=>0.0,'discounts'=>0.0];
 $reportStart=(string)($_GET['start_date']??date('Y-m-d',strtotime('-29 days')));
 $reportEnd=(string)($_GET['end_date']??date('Y-m-d'));
@@ -184,4 +214,4 @@ $recentOrders=[];$revenueChart=[];$orderStatusChart=[];$bestSellingProducts=[];i
  $recentOrders=db()->query("SELECT o.id,o.order_no,o.total,o.status,o.payment_status,o.created_at,u.name AS customer_name FROM orders o JOIN users u ON u.id=o.user_id ORDER BY o.id DESC LIMIT 8")->fetchAll();
  $bestSellingProducts=db()->query("SELECT oi.product_name,SUM(oi.quantity) AS units_sold,SUM((oi.unit_price*oi.quantity)-COALESCE(oi.discount_amount,0)) AS net_sales,COUNT(DISTINCT oi.order_id) AS order_count FROM order_items oi JOIN orders o ON o.id=oi.order_id WHERE o.payment_status='paid' AND o.status<>'refunded' GROUP BY oi.product_id,oi.product_name ORDER BY units_sold DESC,net_sales DESC LIMIT 5")->fetchAll();
 }
-render('admin/manage',['title'=>$meta[$resource]['title']??($resource==='settings'?'Mağaza ayarları':($resource==='payments'?'Ödeme ayarları':($resource==='orders'?'Siparişler':($resource==='sellers'?'Satıcı başvuruları':($resource==='seller_payments'?'Satıcı ödemeleri':'Genel bakış'))))),'resource'=>$resource,'meta'=>$meta,'rows'=>$rows,'edit'=>$edit,'categories'=>$categories,'settings'=>$settings,'stats'=>$stats,'recentOrders'=>$recentOrders,'revenueChart'=>$revenueChart,'orderStatusChart'=>$orderStatusChart,'bestSellingProducts'=>$bestSellingProducts,'reportRows'=>$reportRows,'reportSummary'=>$reportSummary,'reportStart'=>$reportStart,'reportEnd'=>$reportEnd,'inventoryProducts'=>$inventoryProducts,'inventoryRows'=>$inventoryRows,'sellerRows'=>$sellerRows,'paymentSettings'=>['paytr_enabled'=>payment_secret('paytr_enabled'),'paytr_sandbox'=>payment_secret('paytr_sandbox'),'paytr_merchant_id'=>payment_secret('paytr_merchant_id'),'iyzico_enabled'=>payment_secret('iyzico_enabled'),'iyzico_sandbox'=>payment_secret('iyzico_sandbox')],'ticketRows'=>$ticketRows,'withdrawalRows'=>$withdrawalRows??[],'refundRows'=>$refundRows??[],'orderDetail'=>$orderDetail??null,'orderDetailItems'=>$orderDetailItems??[]]);
+render('admin/manage',['title'=>$meta[$resource]['title']??($resource==='slider'?'Ana sayfa slider yönetimi':($resource==='settings'?'Mağaza ayarları':($resource==='payments'?'Ödeme ayarları':($resource==='orders'?'Siparişler':($resource==='sellers'?'Satıcı başvuruları':($resource==='seller_payments'?'Satıcı ödemeleri':'Genel bakış')))))),'resource'=>$resource,'meta'=>$meta,'rows'=>$rows,'edit'=>$edit,'categories'=>$categories,'settings'=>$settings,'sliderSlides'=>$sliderSlides,'stats'=>$stats,'recentOrders'=>$recentOrders,'revenueChart'=>$revenueChart,'orderStatusChart'=>$orderStatusChart,'bestSellingProducts'=>$bestSellingProducts,'reportRows'=>$reportRows,'reportSummary'=>$reportSummary,'reportStart'=>$reportStart,'reportEnd'=>$reportEnd,'inventoryProducts'=>$inventoryProducts,'inventoryRows'=>$inventoryRows,'sellerRows'=>$sellerRows,'paymentSettings'=>['paytr_enabled'=>payment_secret('paytr_enabled'),'paytr_sandbox'=>payment_secret('paytr_sandbox'),'paytr_merchant_id'=>payment_secret('paytr_merchant_id'),'iyzico_enabled'=>payment_secret('iyzico_enabled'),'iyzico_sandbox'=>payment_secret('iyzico_sandbox')],'ticketRows'=>$ticketRows,'withdrawalRows'=>$withdrawalRows??[],'refundRows'=>$refundRows??[],'orderDetail'=>$orderDetail??null,'orderDetailItems'=>$orderDetailItems??[]]);
