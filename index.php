@@ -7,6 +7,73 @@ $path=trim(parse_url($_SERVER['REQUEST_URI']??'/',PHP_URL_PATH)?:'/','/');
 $base=trim(str_replace('\\\\','/',dirname($_SERVER['SCRIPT_NAME']??'/')),'/');
 if($base!==''&&str_starts_with($path,$base))$path=trim(substr($path,strlen($base)),'/');
 $path=$path?:'home';
+
+if(str_starts_with($path,'payment/start/') && $_SERVER['REQUEST_METHOD']==='POST'){
+    csrf_check(); require_login();
+    $orderId=(int)substr($path,14);
+    $q=db()->prepare('SELECT * FROM orders WHERE id=? AND user_id=?');$q->execute([$orderId,(int)$_SESSION['user']['id']]);$order=$q->fetch();
+    if(!$order||$order['payment_status']==='paid'){http_response_code(404);exit('Sipariş bulunamadı veya zaten ödendi.');}
+    $provider=(string)($_POST['provider']??'');
+    $phone=trim((string)($_POST['phone']??''));$address=trim((string)($_POST['address']??''));$city=trim((string)($_POST['city']??''));$zip=trim((string)($_POST['zip']??''));
+    $identity=preg_replace('/\D+/','',(string)($_POST['identity']??''));
+    if(strlen($phone)<10||strlen($address)<8||$city===''||$zip===''){flash('error','Telefon ve fatura/iletişim adresi bilgilerini tamamlayın.');redirect(url('order/'.$orderId));}
+    $user=$_SESSION['user'];$orderNo=(string)$order['order_no'];$amount=(float)$order['total'];$amountText=number_format($amount,2,'.','');
+    try{
+      if($provider==='paytr'){
+        if(payment_secret('paytr_enabled')!=='1')throw new RuntimeException('PayTR şu anda etkin değil.');
+        $merchantId=payment_secret('paytr_merchant_id');$merchantKey=payment_secret('paytr_merchant_key');$salt=payment_secret('paytr_merchant_salt');
+        if($merchantId===''||$merchantKey===''||$salt==='')throw new RuntimeException('PayTR mağaza bilgileri eksik.');
+        $ip=(string)($_SERVER['REMOTE_ADDR']??'127.0.0.1');$basket=[];
+        $items=db()->prepare('SELECT product_name,quantity,unit_price FROM order_items WHERE order_id=?');$items->execute([$orderId]);
+        foreach($items->fetchAll() as $it)$basket[]=[$it['product_name'],number_format((float)$it['unit_price'],2,'.',''),(int)$it['quantity']];
+        $basketEncoded=base64_encode(json_encode($basket,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+        $test=payment_secret('paytr_sandbox')==='1'?'1':'0';$noInstallment='1';$maxInstallment='0';$currency='TL';
+        $hashStr=$merchantId.$ip.$orderNo.$user['email'].(string)round($amount*100).$basketEncoded.$noInstallment.$maxInstallment.$currency.$test.$user['name'].$address.$phone.$salt;
+        $token=base64_encode(hash_hmac('sha256',$hashStr,$merchantKey,true));
+        $response=payment_http_post('https://www.paytr.com/odeme/api/get-token',[
+          'merchant_id'=>$merchantId,'user_ip'=>$ip,'merchant_oid'=>$orderNo,'email'=>$user['email'],'payment_amount'=>(string)round($amount*100),'paytr_token'=>$token,'user_basket'=>$basketEncoded,'debug_on'=>$test,'no_installment'=>$noInstallment,'max_installment'=>$maxInstallment,'user_name'=>$user['name'],'user_address'=>$address,'user_phone'=>$phone,'merchant_ok_url'=>url('order/'.$orderId),'merchant_fail_url'=>url('order/'.$orderId),'timeout_limit'=>'30','currency'=>$currency,'test_mode'=>$test,'lang'=>'tr'
+        ],['Content-Type: application/x-www-form-urlencoded']);
+        $data=json_decode($response['body'],true);
+        if(($data['status']??'')!=='success'||empty($data['token']))throw new RuntimeException('PayTR ödeme oturumu oluşturulamadı: '.($data['reason']??'Sağlayıcı yanıtı başarısız.'));
+        db()->prepare("INSERT INTO payment_transactions(order_id,provider,provider_reference,amount,status) VALUES(?,?,?,?, 'pending')")->execute([$orderId,'paytr',(string)$data['token'],$amount]);
+        redirect('https://www.paytr.com/odeme/guvenli/'.rawurlencode((string)$data['token']));
+      } elseif($provider==='iyzico'){
+        if(payment_secret('iyzico_enabled')!=='1')throw new RuntimeException('iyzico şu anda etkin değil.');
+        if(strlen($identity)!==11)throw new RuntimeException('iyzico için 11 haneli T.C. kimlik numarası gereklidir.');
+        $base=url('payment/iyzico-callback');
+        $items=db()->prepare('SELECT id,product_name,quantity,unit_price FROM order_items WHERE order_id=?');$items->execute([$orderId]);$basketItems=[];$idx=1;
+        foreach($items->fetchAll() as $it){$basketItems[]=['id'=>(string)$it['id'],'name'=>$it['product_name'],'category1'=>'Dijital Oyun Ürünleri','itemType'=>'VIRTUAL','price'=>number_format((float)$it['unit_price']*(int)$it['quantity'],2,'.','')];$idx++;}
+        $buyerName=explode(' ',$user['name']);$surname=count($buyerName)>1?array_pop($buyerName):'Müşteri';$name=implode(' ',$buyerName)?:$user['name'];
+        $payload=['locale'=>'tr','conversationId'=>$orderNo,'price'=>$amountText,'paidPrice'=>$amountText,'currency'=>'TRY','basketId'=>$orderNo,'paymentGroup'=>'PRODUCT','callbackUrl'=>$base,'enabledInstallments'=>[1,2,3,6,9],'buyer'=>['id'=>(string)$user['id'],'name'=>$name,'surname'=>$surname,'identityNumber'=>$identity,'email'=>$user['email'],'gsmNumber'=>$phone,'registrationAddress'=>$address,'city'=>$city,'country'=>'Turkey','zipCode'=>$zip,'ip'=>$ip=(string)($_SERVER['REMOTE_ADDR']??'127.0.0.1')],'shippingAddress'=>['contactName'=>$user['name'],'city'=>$city,'country'=>'Turkey','address'=>$address,'zipCode'=>$zip],'billingAddress'=>['contactName'=>$user['name'],'city'=>$city,'country'=>'Turkey','address'=>$address,'zipCode'=>$zip],'basketItems'=>$basketItems];
+        $data=iyzico_request('/payment/iyzipos/checkoutform/initialize/auth/ecom',$payload);
+        if(($data['status']??'')!=='success'||empty($data['token']))throw new RuntimeException('iyzico ödeme formu oluşturulamadı: '.($data['errorMessage']??'Sağlayıcı yanıtı başarısız.'));
+        db()->prepare("INSERT INTO payment_transactions(order_id,provider,provider_reference,amount,status) VALUES(?,?,?,?, 'pending')")->execute([$orderId,'iyzico',(string)$data['token'],$amount]);
+        if(!empty($data['paymentPageUrl']))redirect((string)$data['paymentPageUrl']);
+        if(!empty($data['checkoutFormContent'])){render('store/iyzico-form',['title'=>'Güvenli ödeme','checkoutFormContent'=>$data['checkoutFormContent']]);exit;}
+        throw new RuntimeException('iyzico ödeme formu bağlantısı döndürmedi.');
+      } else throw new RuntimeException('Geçersiz ödeme sağlayıcısı.');
+    }catch(Throwable $e){flash('error',$e->getMessage());redirect(url('order/'.$orderId));}
+}
+if($path==='payment/paytr-callback'&&$_SERVER['REQUEST_METHOD']==='POST'){
+    $post=$_POST;
+    if(!paytr_callback_valid($post)){http_response_code(400);echo 'PAYTR notification failed: bad hash';exit;}
+    $orderNo=(string)($post['merchant_oid']??'');$q=db()->prepare('SELECT id,total,payment_status FROM orders WHERE order_no=?');$q->execute([$orderNo]);$o=$q->fetch();
+    if(!$o){http_response_code(404);echo 'ORDER NOT FOUND';exit;}
+    if(($post['status']??'')==='success'){
+      if((int)($post['total_amount']??0)<(int)round((float)$o['total']*100)){http_response_code(400);echo 'AMOUNT MISMATCH';exit;}
+      payment_mark_paid((int)$o['id'],'paytr',$orderNo);
+    }else{db()->prepare("UPDATE orders SET payment_status='failed',status='payment_failed' WHERE id=? AND payment_status<>'paid'")->execute([(int)$o['id']]);db()->prepare("UPDATE payment_transactions SET status='failed' WHERE order_id=? AND provider='paytr'")->execute([(int)$o['id']]);}
+    echo 'OK';exit;
+}
+if($path==='payment/iyzico-callback'&&$_SERVER['REQUEST_METHOD']==='POST'){
+    $token=trim((string)($_POST['token']??''));if($token===''){http_response_code(400);exit('Missing token');}
+    $q=db()->prepare("SELECT pt.order_id,o.order_no FROM payment_transactions pt JOIN orders o ON o.id=pt.order_id WHERE pt.provider='iyzico' AND pt.provider_reference=? ORDER BY pt.id DESC LIMIT 1");$q->execute([$token]);$tx=$q->fetch();
+    if(!$tx){http_response_code(404);exit('Transaction not found');}
+    try{$result=iyzico_request('/payment/iyzipos/checkoutform/auth/ecom/detail',['locale'=>'tr','conversationId'=>$tx['order_no'],'token'=>$token]);if(($result['status']??'')==='success'&&($result['paymentStatus']??'')==='SUCCESS'){payment_mark_paid((int)$tx['order_id'],'iyzico',(string)($result['paymentId']??$token));}else{db()->prepare("UPDATE orders SET payment_status='failed',status='payment_failed' WHERE id=? AND payment_status<>'paid'")->execute([(int)$tx['order_id']]);db()->prepare("UPDATE payment_transactions SET status='failed' WHERE order_id=? AND provider='iyzico'")->execute([(int)$tx['order_id']]);}}
+    catch(Throwable $e){error_log('iyzico callback: '.$e->getMessage());http_response_code(500);exit('Callback verification failed');}
+    redirect(url('order/'.$tx['order_id']));
+}
+
 if($path==='logout'){$_SESSION=[];session_destroy();redirect(url('login'));}
 
 if($path==='cart/add'&&$_SERVER['REQUEST_METHOD']==='POST'){csrf_check();$pid=(int)($_POST['product_id']??0);$qty=max(1,min(20,(int)($_POST['quantity']??1)));$st=db()->prepare("SELECT id,slug,delivery_type,status FROM products WHERE id=? AND status='active'");$st->execute([$pid]);$p=$st->fetch();if(!$p){flash('error','Ürün bulunamadı.');redirect(url());}if($p['delivery_type']==='automatic'){$st=db()->prepare("SELECT COUNT(*) FROM inventory_codes WHERE product_id=? AND status='available'");$st->execute([$pid]);if((int)$st->fetchColumn()<$qty){flash('error','Bu ürün için yeterli dijital kod stoğu bulunmuyor.');redirect(url('product/'.rawurlencode($p['slug'])));}}$_SESSION['cart'][$pid]=min(20,(int)($_SESSION['cart'][$pid]??0)+$qty);flash('success','Ürün sepete eklendi.');redirect(url('cart'));}
