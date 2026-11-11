@@ -47,7 +47,7 @@ function cancel_unpaid_order(int $orderId,?int $ownerId=null):void {
         if($order['payment_status']==='paid')throw new RuntimeException('Ödemesi alınmış sipariş iptal edilemez; iade talebi oluşturun.');
         if(!in_array($order['status'],['pending','payment_failed'],true))throw new RuntimeException('Bu sipariş artık iptal edilemez.');
         $pdo->prepare("UPDATE inventory_codes SET status='available',reserved_order_id=NULL,reserved_until=NULL WHERE reserved_order_id=? AND status='reserved'")->execute([$orderId]);
-        $pdo->prepare("UPDATE orders SET status='cancelled' WHERE id=?")->execute([$orderId]);if(!empty($order['coupon_code']))$pdo->prepare('UPDATE coupons SET usage_count=GREATEST(usage_count-1,0) WHERE code=?')->execute([$order['coupon_code']]);
+        $pdo->prepare("UPDATE orders SET status='cancelled',coupon_usage_released=1 WHERE id=?")->execute([$orderId]);if(!empty($order['coupon_code']))$pdo->prepare('UPDATE coupons SET usage_count=GREATEST(usage_count-1,0) WHERE code=?')->execute([$order['coupon_code']]);
         $pdo->prepare("UPDATE payment_transactions SET status='cancelled' WHERE order_id=? AND status='pending'")->execute([$orderId]);
         $pdo->commit();
     } catch(Throwable $e) {if($pdo->inTransaction())$pdo->rollBack();throw $e;}
