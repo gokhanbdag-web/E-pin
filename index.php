@@ -197,10 +197,10 @@ if($path==='account'){
  render('account/dashboard',['title'=>'Hesabım','accountUser'=>$accountUser,'accountOrders'=>$accountOrders,'tickets'=>$tickets]);exit;
 }
 if($path==='search'){
- $term=trim((string)($_GET['q']??''));$term=mb_substr($term,0,80,'UTF-8');$sort=(string)($_GET['sort']??'relevance');
+ $term=trim((string)($_GET['q']??''));$term=function_exists('mb_substr')?mb_substr($term,0,80,'UTF-8'):substr($term,0,240);$sort=(string)($_GET['sort']??'relevance');
  $sortSql=['relevance'=>'p.id DESC','price_asc'=>'p.price ASC,p.id DESC','price_desc'=>'p.price DESC,p.id DESC','newest'=>'p.created_at DESC,p.id DESC'][$sort]??'p.id DESC';
  $searchProducts=[];
- if(mb_strlen($term,'UTF-8')>=2){$like='%'.$term.'%';$q=db()->prepare("SELECT p.id,p.name,p.slug,p.short_description,p.price,p.image,c.name AS category_name FROM products p LEFT JOIN categories c ON c.id=p.category_id WHERE p.status='active' AND (p.name LIKE ? OR p.short_description LIKE ? OR p.description LIKE ? OR c.name LIKE ?) ORDER BY ".$sortSql." LIMIT 60");$q->execute([$like,$like,$like,$like]);$searchProducts=$q->fetchAll();}
+ if((function_exists('mb_strlen')?mb_strlen($term,'UTF-8'):strlen($term))>=2){$like='%'.$term.'%';$q=db()->prepare("SELECT p.id,p.name,p.slug,p.short_description,p.price,p.image,c.name AS category_name FROM products p LEFT JOIN categories c ON c.id=p.category_id WHERE p.status='active' AND (p.name LIKE ? OR p.short_description LIKE ? OR p.description LIKE ? OR c.name LIKE ?) ORDER BY ".$sortSql." LIMIT 60");$q->execute([$like,$like,$like,$like]);$searchProducts=$q->fetchAll();}
  render('store/search',['title'=>$term!==''?'Arama: '.$term:'Ürün ara','searchTerm'=>$term,'searchSort'=>$sort,'searchProducts'=>$searchProducts]);exit;
 }
 if(str_starts_with($path,'page/')){$slug=substr($path,5);$st=db()->prepare("SELECT title,content FROM pages WHERE slug=? AND status='active'");$st->execute([$slug]);$page=$st->fetch();if(!$page){http_response_code(404);$page=['title'=>'Sayfa bulunamadı','content'=>''];}render('store/page',['title'=>$page['title'],'page'=>$page]);exit;}
