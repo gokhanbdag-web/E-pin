@@ -8,9 +8,10 @@ $meta=[
 'pages'=>['title'=>'Sayfalar','table'=>'pages','fields'=>['title'=>'Sayfa başlığı','slug'=>'URL kısa adı','content'=>'Sayfa içeriği','status'=>'Durum']],
 'menus'=>['title'=>'Menüler','table'=>'menus','fields'=>['title'=>'Menü başlığı','url'=>'Bağlantı','location'=>'Konum','sort_order'=>'Sıralama','status'=>'Durum']]
 ];
-if(!isset($meta[$resource])&&!in_array($resource,['overview','settings','inventory','payments','orders'],true))$resource='overview';
+if(!isset($meta[$resource])&&!in_array($resource,['overview','settings','inventory','payments','orders','tickets'],true))$resource='overview';
 if($_SERVER['REQUEST_METHOD']==='POST'){csrf_check();$action=(string)($_POST['action']??'');try{
- if($resource==='payments'&&$action==='save'){
+ if($resource==='tickets'&&$action==='reply'){$id=(int)($_POST['id']??0);$reply=trim((string)($_POST['admin_reply']??''));$status=(string)($_POST['status']??'open');if(!in_array($status,['open','in_progress','closed'],true))throw new RuntimeException('Geçersiz talep durumu.');if(strlen($reply)<2)throw new RuntimeException('Yanıt metni en az 2 karakter olmalı.');db()->prepare('UPDATE support_tickets SET admin_reply=?,status=? WHERE id=?')->execute([$reply,$status,$id]);flash('success','Destek talebi yanıtlandı.');}
+ elseif($resource==='payments'&&$action==='save'){
  $keys=['paytr_enabled','paytr_sandbox','paytr_merchant_id','paytr_merchant_key','paytr_merchant_salt','iyzico_enabled','iyzico_sandbox','iyzico_api_key','iyzico_secret_key'];
  foreach($keys as $k){
   $v=trim((string)($_POST[$k]??''));
@@ -29,6 +30,7 @@ elseif($resource==='inventory'&&$action==='import_codes'){$productId=(int)($_POS
 }catch(Throwable $e){flash('error',$e->getMessage());}redirect(url('admin?section='.$resource));}
 $edit=null;$rows=[];$categories=[];$settings=[];$stats=[];
 if(isset($meta[$resource])){$m=$meta[$resource];$rows=db()->query('SELECT * FROM '.$m['table'].' ORDER BY id DESC LIMIT 250')->fetchAll();if($resource==='products')$categories=db()->query('SELECT id,name FROM categories ORDER BY name')->fetchAll();if(isset($_GET['edit'])){$st=db()->prepare('SELECT * FROM '.$m['table'].' WHERE id=?');$st->execute([(int)$_GET['edit']]);$edit=$st->fetch()?:null;}}
+$ticketRows=[];if($resource==='tickets'){$ticketRows=db()->query("SELECT t.*,u.name AS customer_name,u.email AS customer_email FROM support_tickets t JOIN users u ON u.id=t.user_id ORDER BY t.id DESC LIMIT 300")->fetchAll();}
 $orderRows=[];if($resource==='orders'){$orderRows=db()->query("SELECT o.*,u.name AS customer_name,u.email AS customer_email,(SELECT provider FROM payment_transactions pt WHERE pt.order_id=o.id ORDER BY pt.id DESC LIMIT 1) AS payment_provider FROM orders o JOIN users u ON u.id=o.user_id ORDER BY o.id DESC LIMIT 300")->fetchAll();}
 $inventoryProducts=[];$inventoryRows=[];if($resource==='inventory'){$inventoryProducts=db()->query("SELECT id,name FROM products ORDER BY name")->fetchAll();$inventoryRows=db()->query("SELECT p.id,p.name,p.delivery_type,SUM(i.status='available') AS available,SUM(i.status='reserved') AS reserved,SUM(i.status='sold') AS sold FROM products p LEFT JOIN inventory_codes i ON i.product_id=p.id GROUP BY p.id,p.name,p.delivery_type ORDER BY p.name")->fetchAll();}
 if($resource==='settings'||$resource==='payments')foreach(db()->query('SELECT setting_key,setting_value FROM settings')->fetchAll() as $r)$settings[$r['setting_key']]=$r['setting_value'];

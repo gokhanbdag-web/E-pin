@@ -90,8 +90,8 @@ if(str_starts_with($path,'account/')&&$_SERVER['REQUEST_METHOD']==='POST'){
  require_login();csrf_check();$uid=(int)$_SESSION['user']['id'];$action=substr($path,8);
  try{
   if($action==='profile'){
-   $name=trim((string)($_POST['name']??''));$email=mb_strtolower(trim((string)($_POST['email']??'')));
-   if(mb_strlen($name)<2||!filter_var($email,FILTER_VALIDATE_EMAIL))throw new RuntimeException('Ad soyad ve geçerli e-posta adresi girin.');
+   $name=trim((string)($_POST['name']??''));$email=strtolower(trim((string)($_POST['email']??'')));
+   if(strlen($name)<2||!filter_var($email,FILTER_VALIDATE_EMAIL))throw new RuntimeException('Ad soyad ve geçerli e-posta adresi girin.');
    db()->prepare('UPDATE users SET name=?,email=? WHERE id=?')->execute([$name,$email,$uid]);
    $_SESSION['user']['name']=$name;$_SESSION['user']['email']=$email;flash('success','Profil bilgileriniz güncellendi.');
   }elseif($action==='password'){
@@ -103,8 +103,8 @@ if(str_starts_with($path,'account/')&&$_SERVER['REQUEST_METHOD']==='POST'){
    db()->prepare('UPDATE users SET password_hash=? WHERE id=?')->execute([password_hash($new,PASSWORD_DEFAULT),$uid]);flash('success','Şifreniz değiştirildi.');
   }elseif($action==='ticket'){
    $subject=trim((string)($_POST['subject']??''));$message=trim((string)($_POST['message']??''));
-   if(mb_strlen($subject)<4||mb_strlen($message)<15)throw new RuntimeException('Konu en az 4, mesajınız en az 15 karakter olmalı.');
-   db()->prepare("INSERT INTO support_tickets(user_id,subject,message) VALUES(?,?,?)")->execute([$uid,mb_substr($subject,0,190),$message]);flash('success','Destek talebiniz oluşturuldu.');
+   if(strlen($subject)<4||strlen($message)<15)throw new RuntimeException('Konu en az 4, mesajınız en az 15 karakter olmalı.');
+   db()->prepare("INSERT INTO support_tickets(user_id,subject,message) VALUES(?,?,?)")->execute([$uid,substr($subject,0,190),$message]);flash('success','Destek talebiniz oluşturuldu.');
   }else{http_response_code(404);exit('İşlem bulunamadı.');}
  }catch(PDOException $e){flash('error',$e->getCode()==='23000'?'Bu e-posta adresi başka bir hesapta kullanılıyor.':'Bilgiler kaydedilemedi. Lütfen tekrar deneyin.');}
  catch(Throwable $e){flash('error',$e->getMessage());}
