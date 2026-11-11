@@ -5,6 +5,14 @@ declare(strict_types=1);
  * Composer-free payment transport and signature helpers.
  * Provider secrets are read from encrypted settings rows.
  */
+function secure_setting_encrypt(string $plain):string {
+    if($plain==='') return '';
+    $key=hash('sha256',(string)config('app_key',config('db_pass')),true);
+    $nonce=random_bytes(12);$tag='';
+    $cipher=openssl_encrypt($plain,'aes-256-gcm',$key,OPENSSL_RAW_DATA,$nonce,$tag);
+    if($cipher===false) throw new RuntimeException('Ayar şifrelenemedi.');
+    return 'enc:'.base64_encode($nonce.$tag.$cipher);
+}
 function payment_secret(string $name): string {
     $q=db()->prepare('SELECT setting_value FROM settings WHERE setting_key=?');
     $q->execute(['payment_'.$name]);
