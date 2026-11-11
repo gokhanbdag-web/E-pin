@@ -45,7 +45,7 @@ function payment_mark_paid(int $orderId,string $provider,string $reference=''):v
         }
         $pdo->commit();
     } catch(Throwable $e) { if($pdo->inTransaction())$pdo->rollBack();throw $e; }
-    try { fulfill_paid_order($orderId); } catch(Throwable $deliveryError) { db()->prepare("UPDATE orders SET status='manual_review' WHERE id=? AND payment_status='paid'")->execute([$orderId]); error_log('Paid order '.$orderId.' requires manual fulfilment: '.$deliveryError->getMessage()); }
+    try { fulfill_paid_order($orderId); seller_record_paid_order($orderId); } catch(Throwable $deliveryError) { db()->prepare("UPDATE orders SET status='manual_review' WHERE id=? AND payment_status='paid'")->execute([$orderId]); error_log('Paid order '.$orderId.' requires manual fulfilment: '.$deliveryError->getMessage()); }
 }
 function paytr_callback_valid(array $post):bool {
     $key=payment_secret('paytr_merchant_key');$salt=payment_secret('paytr_merchant_salt');
