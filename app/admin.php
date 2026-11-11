@@ -11,7 +11,7 @@ $meta=[
 'menus'=>['title'=>'Menüler','table'=>'menus','fields'=>['title'=>'Menü başlığı','url'=>'Bağlantı','location'=>'Konum','sort_order'=>'Sıralama','status'=>'Durum']]
 ];
 if(config('business_mode')!=='multi_vendor'&&$resource==='sellers')$resource='overview';
-if(!isset($meta[$resource])&&!in_array($resource,['overview','reports','settings','inventory','payments','orders','refunds','tickets','sellers','seller_payments'],true))$resource='overview';
+if(!isset($meta[$resource])&&!in_array($resource,['overview','reports','settings','inventory','payments','orders','refunds','tickets','sellers','seller_payments','demo'],true))$resource='overview';
 if($_SERVER['REQUEST_METHOD']==='POST'){csrf_check();$action=(string)($_POST['action']??'');try{
  if($resource==='sellers'&&config('business_mode')==='multi_vendor'&&$action==='review'){
  $id=(int)($_POST['id']??0);$decision=(string)($_POST['decision']??'');
@@ -53,6 +53,71 @@ elseif($resource==='refunds'&&$action==='review'){$id=(int)($_POST['id']??0);$de
  flash('success','Ödeme ayarları kaydedildi.');
 }
 elseif($resource==='inventory'&&$action==='import_codes'){$productId=(int)($_POST['product_id']??0);$variantId=(int)($_POST['variant_id']??0);$st=db()->prepare("SELECT id FROM products WHERE id=?");$st->execute([$productId]);if(!$st->fetch())throw new RuntimeException('Ürün seçin.');if($variantId){$vst=db()->prepare("SELECT id FROM product_variants WHERE id=? AND product_id=? AND status='active'");$vst->execute([$variantId,$productId]);if(!$vst->fetch())throw new RuntimeException('Seçilen varyant bu ürüne ait değil veya yayında değil.');}$lines=preg_split('/\r\n|\r|\n/',(string)($_POST['codes']??''));$added=0;$duplicates=0;$ins=db()->prepare("INSERT IGNORE INTO inventory_codes(product_id,variant_id,code_ciphertext,code_nonce,code_tag,code_hash,status) VALUES(?,?,?,?,?,?,'available')");foreach($lines as $line){$code=trim($line);if($code==='')continue;if(strlen($code)<3||strlen($code)>250)throw new RuntimeException('Kod uzunluğu 3–250 karakter arasında olmalı.');[$cipher,$nonce,$tag,$hash]=inventory_encrypt($code);$ins->execute([$productId,$variantId?:null,$cipher,$nonce,$tag,$hash]);if($ins->rowCount())$added++;else $duplicates++;}db()->prepare("UPDATE products SET delivery_type='automatic' WHERE id=?")->execute([$productId]);flash('success',$added.' kod stoğa eklendi. Tekrarlanan kod: '.$duplicates.'. Ürün otomatik teslimata alındı.');}
+ elseif($resource==='demo'&&$action==='seed'){
+ $pdo=db();$pdo->beginTransaction();try{
+  $check=$pdo->prepare("SELECT setting_value FROM settings WHERE setting_key='demo_content_seeded'");$check->execute();if($check->fetchColumn())throw new RuntimeException('Demo içerikleri daha önce eklenmiş. Mevcut içerikleriniz korunuyor.');
+  $categoryData=[
+   ['PC Oyunları','pc-oyunlari','Steam, PC oyunları ve dijital oyun bakiyeleri.'],
+   ['PlayStation','playstation','PlayStation Store bakiyeleri ve PS Plus üyelikleri.'],
+   ['Xbox','xbox','Xbox hediye kartları ve Game Pass üyelikleri.'],
+   ['Mobil Oyunlar','mobil-oyunlar','Popüler mobil oyunlar için dijital bakiye ve paketler.'],
+   ['Hediye Kartları','hediye-kartlari','Dijital hediye kartları ve çevrimiçi mağaza bakiyeleri.'],
+   ['Yazılım & Üyelik','yazilim-uyelik','Dijital yazılım, güvenlik ve üretkenlik üyelikleri.']
+  ];
+  $cat=$pdo->prepare("INSERT INTO categories(name,slug,description,sort_order,status) VALUES(?,?,?,?, 'active')");$catIds=[];foreach($categoryData as $i=>$v){$cat->execute([$v[0],$v[1],$v[2],$i+1]);$catIds[$v[1]]=(int)$pdo->lastInsertId();}
+  $products=[
+   ['Steam Cüzdan Kodu 50 TL','steam-cuzdan-50','PC oyunlarında kullanabileceğiniz Steam bakiyesi.','Steam cüzdanınıza bakiye ekleyerek binlerce oyunu keşfedin. Dijital ürün açıklaması demo amaçlıdır.','50.00','pc-oyunlari','photo-1493711662062-fa541adb3fc8'],
+   ['Steam Cüzdan Kodu 100 TL','steam-cuzdan-100','Steam hesabınız için 100 TL dijital bakiye.','Oyun, DLC ve oyun içi içerik alışverişlerinde kullanılır.','100.00','pc-oyunlari','photo-1493711662062-fa541adb3fc8'],
+   ['Steam Cüzdan Kodu 250 TL','steam-cuzdan-250','Steam hesabınıza 250 TL bakiye.','Dijital cüzdan ürünü. Demo mağaza kaydıdır.','250.00','pc-oyunlari','photo-1493711662062-fa541adb3fc8'],
+   ['PUBG: Battlegrounds UC Paketi','pubg-battlegrounds-uc','PUBG oyuncuları için örnek dijital ürün sayfası.','Paket içeriği ve teslimat koşulları yönetim panelinden düzenlenebilir.','149.90','pc-oyunlari','photo-1542751371-adc38448a05e'],
+   ['Valorant VP 475','valorant-vp-475','Valorant VP dijital bakiye paketi.','Valorant mağazasında kullanıma yönelik örnek paket.','129.90','pc-oyunlari','photo-1542751371-adc38448a05e'],
+   ['Valorant VP 1000','valorant-vp-1000','Daha büyük VP paketi.','Demo ürün; gerçek kod içermez.','249.90','pc-oyunlari','photo-1542751371-adc38448a05e'],
+   ['Minecraft Java & Bedrock','minecraft-java-bedrock','Minecraft PC sürümü için dijital lisans ürün sayfası.','Platform ve bölge uyumluluğunu satın alma öncesinde kontrol edin.','699.90','pc-oyunlari','photo-1603481546238-487240415921'],
+   ['EA SPORTS FC Points','ea-sports-fc-points','EA SPORTS FC için örnek puan paketi.','Dijital içerik ürünü; demo kayıt.','199.90','pc-oyunlari','photo-1511512578047-dfb367046420'],
+   ['PlayStation Store 250 TL','ps-store-250','PlayStation Store cüzdan bakiyesi.','PSN hesabınızın bölgesi ile uyumlu ürün seçmeniz gerekir.','250.00','playstation','photo- Sony'],
+   ['PlayStation Store 500 TL','ps-store-500','PlayStation Store için 500 TL bakiye.','Demo ürün sayfası; gerçek kod teslim edilmez.','500.00','playstation','photo-1535223289827-42f1e9919769'],
+   ['PlayStation Plus Essential 3 Ay','ps-plus-essential-3','Çevrimiçi çok oyunculu deneyim ve aylık oyunlar.','Üyelik bölge koşulları satın alma öncesinde kontrol edilmelidir.','499.90','playstation','photo-1605901309584-818e25960a8f'],
+   ['PlayStation Plus Extra 12 Ay','ps-plus-extra-12','Geniş oyun kataloğu için örnek üyelik paketi.','Demo ürün; gerçek abonelik başlatılmaz.','2499.90','playstation','photo-1605901309584-818e25960a8f'],
+   ['PS5 Dijital Oyun Hediye Kartı','ps5-digital-gift','PlayStation oyuncuları için hediye seçeneği.','Hediye kartı ürün sayfası örneği.','349.90','playstation','photo-1486572788966-cfd3df1f5b42'],
+   ['Xbox Game Pass Ultimate 1 Ay','xbox-game-pass-1','Xbox ve PC oyun kataloğu üyeliği.','Üyelik avantajları ve bölge uyumluluğu ürün detayında yönetilebilir.','299.90','xbox','photo- xbox'],
+   ['Xbox Game Pass Ultimate 3 Ay','xbox-game-pass-3','Üç aylık Game Pass örnek üyelik paketi.','Demo içeriktir; gerçek üyelik kodu bulunmaz.','799.90','xbox','photo- xbox'],
+   ['Xbox Hediye Kartı 300 TL','xbox-gift-300','Xbox hesabınız için dijital bakiye.','Hesap bölgesi ile uyumlu hediye kartı seçin.','300.00','xbox','photo-1535223289827-42f1e9919769'],
+   ['Xbox Hediye Kartı 500 TL','xbox-gift-500','Xbox Store bakiyesi için örnek ürün.','Demo ürün sayfası.','500.00','xbox','photo-1535223289827-42f1e9919769'],
+   ['Roblox 400 Robux','roblox-400-robux','Roblox deneyiminiz için Robux paketi.','Demo mağaza ürünü; kod veya bakiye yüklemesi yapmaz.','159.90','mobil-oyunlar','photo-1511512578047-dfb367046420'],
+   ['Roblox 800 Robux','roblox-800-robux','Daha fazla Robux için örnek paket.','Ürün seçenekleri ve fiyatları panelden düzenlenebilir.','299.90','mobil-oyunlar','photo-1511512578047-dfb367046420'],
+   ['PUBG Mobile  UC 660','pubg-mobile-660','PUBG Mobile UC paketi örnek ürün.','Hesap ve bölge koşulları ürün detayında gösterilebilir.','189.90','mobil-oyunlar','photo-1542751371-adc38448a05e'],
+   ['PUBG Mobile UC 1800','pubg-mobile-1800','PUBG Mobile için yüksek UC paketi.','Demo ürün; gerçek oyun içi bakiye yüklenmez.','499.90','mobil-oyunlar','photo-1542751371-adc38448a05e'],
+   ['Mobile Legends 500 Elmas','mobile-legends-500','Mobile Legends elmas paketi örneği.','Oyun içi dijital ürün sayfası.','149.90','mobil-oyunlar','photo-1511512578047-dfb367046420'],
+   ['Free Fire 1000 Elmas','free-fire-1000','Free Fire oyuncuları için örnek elmas paketi.','Demo içerik; gerçek kod teslimatı yoktur.','229.90','mobil-oyunlar','photo-1511512578047-dfb367046420'],
+   ['Google Play Hediye Kartı 100 TL','google-play-100','Google Play bakiyesi için örnek kart.','Bölge ve hesap uyumluluğunu kontrol edin.','100.00','hediye-kartlari','photo-1550745165-9bc0b252726f'],
+   ['Google Play Hediye Kartı 250 TL','google-play-250','Google Play Store için 250 TL bakiye.','Demo mağaza ürünü.','250.00','hediye-kartlari','photo-1550745165-9bc0b252726f'],
+   ['Apple Gift Card 500 TL','apple-gift-500','Apple hesabınız için hediye kartı örneği.','Ülke/bölge uyumluluğu önemlidir.','500.00','hediye-kartlari','photo-1512499617640-c74ae3a79d37'],
+   ['Spotify Premium 3 Ay','spotify-premium-3','Müzik üyeliği için örnek dijital paket.','Demo ürün sayfası; abonelik etkinleştirmez.','399.90','yazilim-uyelik','photo-1516280440614-37939bbacd81'],
+   ['YouTube Premium 1 Ay','youtube-premium-1','Reklamsız video deneyimi için örnek üyelik.','Üyelik koşulları ve uygunluk detayları düzenlenebilir.','99.90','yazilim-uyelik','photo-1492619375914-88005aa9e8fb'],
+   ['Microsoft 365 Personal 12 Ay','microsoft-365-personal','Ofis ve bulut depolama üyeliği örneği.','Demo ürün; gerçek lisans anahtarı içermez.','1999.90','yazilim-uyelik','photo-1498050108023-c5249f4df085'],
+   ['Antivirüs Premium 1 Yıl','antivirus-premium-1','Cihazlarınızı korumak için örnek güvenlik üyeliği.','Lisans kapsamı ve cihaz sayısı admin tarafından düzenlenebilir.','599.90','yazilim-uyelik','photo-1550751827-4bd374c3f58b'],
+   ['VPN Premium 12 Ay','vpn-premium-12','Gizlilik ve bağlantı güvenliği için örnek üyelik.','Demo ürün sayfası.','899.90','yazilim-uyelik','photo-1558494949-ef010cbdcc31'],
+   ['Discord Nitro 1 Ay','discord-nitro-1','Discord Nitro üyelik paketi örneği.','Demo içerik; gerçek abonelik oluşturulmaz.','149.90','yazilim-uyelik','photo-1516280440614-37939bbacd81']
+  ];
+  $ins=$pdo->prepare("INSERT INTO products(category_id,name,slug,short_description,description,price,image,delivery_type,status,sort_order) VALUES(?,?,?,?,?,?,?,'manual','active',?)");
+  $variant=$pdo->prepare("INSERT INTO product_variants(product_id,name,sku,price,status,sort_order) VALUES(?,?,?,?, 'active',?)");
+  foreach($products as $i=>$p){$image=$p[6]==='photo- Sony'||$p[6]==='photo- xbox'?'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?auto=format&fit=crop&w=900&q=82':'https://images.unsplash.com/'.$p[6].'?auto=format&fit=crop&w=900&q=82';$ins->execute([$catIds[$p[5]],$p[0],$p[1],$p[2],$p[3],$p[4],$image,$i+1]);$pid=(int)$pdo->lastInsertId();if($i<8||$i===10||$i===13||$i===17){$variant->execute([$pid,'Dijital teslimat','DEMO-'.strtoupper(str_replace('-','',$p[1])),(float)$p[4],1]);}}
+  $pages=[
+   ['Hakkımızda','hakkimizda','<h2>Oyun dünyasına açılan mağazanız</h2><p>Bu demo mağaza, E-pin platformunun içerik yönetimi ve vitrin deneyimini incelemeniz için hazırlanmıştır. Marka hikâyenizi, hizmet yaklaşımınızı ve güven ilkelerinizi bu alandan düzenleyebilirsiniz.</p><p>Ürün, kategori ve sayfa içerikleri yönetim panelinden güncellenebilir.</p>'],
+   ['Sıkça Sorulan Sorular','sss','<h2>Dijital ürün nasıl satın alınır?</h2><p>Ürünü seçin, varsa paket seçeneğini belirleyin ve sepete ekleyin. Ödeme sağlayıcıları yapılandırılmadan gerçek tahsilat yapılmaz.</p><h2>Kodlar nasıl teslim edilir?</h2><p>Otomatik teslimat için gerçek kod stoğu eklenmelidir. Demo ürünlerde gerçek kod bulunmaz.</p><h2>Hesap bölgesi önemli mi?</h2><p>Hediye kartı ve üyeliklerde ürünün bölge koşullarını kontrol edin.</p>'],
+   ['Teslimat ve İade','teslimat-iade','<h2>Teslimat</h2><p>Dijital ürün teslimatı, ürünün otomatik veya manuel teslimat türüne göre gerçekleştirilir. Gerçek satış öncesinde stok ve teslimat ayarlarını yapılandırın.</p><h2>İade</h2><p>İade koşullarınızı ve yasal bilgilendirmelerinizi işletmenize göre düzenleyin.</p>'],
+   ['İletişim','iletisim','<h2>Bize ulaşın</h2><p>Destek taleplerinizi müşteri hesabınızdan iletebilirsiniz. E-posta, telefon ve çalışma saatlerinizi mağaza bilgilerinize göre güncelleyin.</p>'],
+   ['Gizlilik Politikası','gizlilik-politikasi','<h2>Gizlilik ve kişisel veriler</h2><p>Bu örnek metin yayına alınmadan önce işletmenizin veri işleme faaliyetlerine ve yürürlükteki mevzuata göre hukuk danışmanınız tarafından düzenlenmelidir.</p>']
+  ];
+  $page=$pdo->prepare("INSERT INTO pages(title,slug,content,status) VALUES(?,?,?,'published')");foreach($pages as $v)$page->execute($v);
+  $menus=[['Ana sayfa','',1],['Hakkımızda','page/hakkimizda',2],['Sıkça Sorulanlar','page/sss',3],['Teslimat & İade','page/teslimat-iade',4],['İletişim','page/iletisim',5]];
+  $menu=$pdo->prepare("INSERT INTO menus(title,url,location,sort_order,status) VALUES(?,?,'header',?,'active')");foreach($menus as $v)$menu->execute($v);
+  $coupon=$pdo->prepare("INSERT INTO coupons(code,discount_type,discount_value,min_order,max_discount,usage_limit,status) VALUES(?,?,?,?,?,0,'active')");$coupon->execute(['HOSGELDIN10','percent',10,100,150]);$coupon->execute(['OYUN50','fixed',50,300,50]);
+  $defaults=['site_title'=>'LEVELUP | Dijital Oyun Mağazası','home_heading'=>'Oyun keyfin, tek tık uzağında.','home_description'=>'Steam, PlayStation, Xbox ve mobil oyunlar için dijital ürünleri keşfet. Demo mağaza içerikleri test amaçlıdır; gerçek kod veya üyelik teslim edilmez.','footer_text'=>'© '.date('Y').' LEVELUP. Demo mağaza içeriğidir.','demo_content_seeded'=>'1'];$setting=$pdo->prepare('INSERT INTO settings(setting_key,setting_value) VALUES(?,?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)');foreach($defaults as $k=>$v)$setting->execute([$k,$v]);
+  $pdo->commit();flash('success','Demo mağaza hazır: 6 kategori, 32 ürün, varyantlar, 5 sayfa, menüler ve 2 kupon eklendi. Demo içerikleri gerçek dijital kod veya üyelik sağlamaz.');
+ }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+}
+
  elseif($resource==='settings'&&$action==='save'){$st=db()->prepare('INSERT INTO settings(setting_key,setting_value) VALUES(?,?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)');foreach(['site_title','home_heading','home_description','footer_text'] as $k)$st->execute([$k,trim((string)($_POST[$k]??''))]);flash('success','Mağaza ayarları kaydedildi.');}
  elseif(isset($meta[$resource])&&$action==='save'){$m=$meta[$resource];$id=(int)($_POST['id']??0);$data=[];$uploadedImage=null;
 if($resource==='products'&&!empty($_FILES['image_file'])&&($_FILES['image_file']['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_NO_FILE){
