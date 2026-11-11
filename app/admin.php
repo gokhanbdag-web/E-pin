@@ -69,9 +69,9 @@ $recentOrders=[];$revenueChart=[];$orderStatusChart=[];if($resource==='overview'
  foreach(['Kullanıcı'=>'users','Kategori'=>'categories','Ürün'=>'products','Sipariş'=>'orders'] as $label=>$table)$stats[$label]=(int)db()->query('SELECT COUNT(*) FROM '.$table)->fetchColumn();
  $stats['Yayındaki ürün']=(int)db()->query("SELECT COUNT(*) FROM products WHERE status='active'")->fetchColumn();
  $stats['Bekleyen sipariş']=(int)db()->query("SELECT COUNT(*) FROM orders WHERE status IN ('pending','payment_failed','manual_review')")->fetchColumn();
- $stats['Onaylı ciro']=(float)db()->query("SELECT COALESCE(SUM(total),0) FROM orders WHERE payment_status='paid'")->fetchColumn();
+ $stats['Onaylı ciro']=(float)db()->query("SELECT COALESCE(SUM(total),0) FROM orders WHERE payment_status='paid' AND status<>'refunded'")->fetchColumn();
  $stats['Hazır e-pin']=(int)db()->query("SELECT COUNT(*) FROM inventory_codes WHERE status='available'")->fetchColumn();
- $q=db()->query("SELECT DATE(created_at) AS day,COALESCE(SUM(CASE WHEN payment_status='paid' THEN total ELSE 0 END),0) AS revenue,COUNT(*) AS orders_count FROM orders WHERE created_at>=DATE_SUB(CURDATE(),INTERVAL 29 DAY) GROUP BY DATE(created_at) ORDER BY day");
+ $q=db()->query("SELECT DATE(created_at) AS day,COALESCE(SUM(CASE WHEN payment_status='paid' AND status<>'refunded' THEN total ELSE 0 END),0) AS revenue,COUNT(*) AS orders_count FROM orders WHERE created_at>=DATE_SUB(CURDATE(),INTERVAL 29 DAY) GROUP BY DATE(created_at) ORDER BY day");
  $daily=[];foreach($q->fetchAll() as $r)$daily[$r['day']]=$r;
  for($i=29;$i>=0;$i--){$day=date('Y-m-d',strtotime('-'.$i.' days'));$revenueChart[]=['day'=>date('d.m',strtotime($day)),'revenue'=>(float)($daily[$day]['revenue']??0),'orders'=>(int)($daily[$day]['orders_count']??0)];}
  $q=db()->query("SELECT status,COUNT(*) AS total FROM orders GROUP BY status");$orderStatusChart=$q->fetchAll();
