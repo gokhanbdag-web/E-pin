@@ -16,3 +16,6 @@
 
 /* Storefront product search */
 .header-search{display:flex;gap:6px;align-items:center;min-width:220px}.header-search input,.search-toolbar input,.search-toolbar select{min-width:0;padding:10px 12px;border:1px solid #d9deea;border-radius:9px;background:#fff;color:#172033}.header-search input{width:190px}.header-search button,.search-toolbar button{border:0;border-radius:9px;padding:10px 14px;background:#635bff;color:#fff;font-weight:700;cursor:pointer}.search-toolbar{display:flex;gap:10px;align-items:center;margin:18px 0 24px}.search-toolbar input{flex:1}@media(max-width:900px){.header-search{order:3;width:100%;min-width:0}.header-search input{flex:1;width:auto}}@media(max-width:560px){.search-toolbar{align-items:stretch;flex-direction:column}.search-toolbar input,.search-toolbar select,.search-toolbar button{width:100%}}
+
+/* Coupon application */
+.coupon-form{display:grid;gap:8px;margin:14px 0;padding:14px;border:1px solid var(--line);border-radius:12px}.coupon-form label{display:grid;gap:6px;color:var(--muted);font-size:.9rem}.coupon-form input{width:100%;padding:11px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text)}.coupon-form button{width:100%;margin:0}.cart-summary>form:not(.coupon-form) button{width:auto;margin:0;padding:6px 0;background:none;color:#ef7777}
