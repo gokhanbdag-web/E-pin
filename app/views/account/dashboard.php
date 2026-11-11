@@ -1,0 +1,1 @@
+<section class="page-head"><h1><?= e($title??'Hesabım') ?></h1><p>Merhaba, <?= e($_SESSION['user']['name']??'') ?>.</p></section><div class="empty">Hesap modülleri kullanıcı rolüne göre yapılandırılacak.</div>
