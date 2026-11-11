@@ -21,7 +21,22 @@ function coupon_quote(PDO $pdo,string $code,float $subtotal,bool $lock=false):ar
  return ['coupon'=>$c,'discount'=>$discount,'total'=>round(max(0,$subtotal-$discount),2)];
 }
 function cart_item_parts(string|int $key):array{$raw=(string)$key;if(preg_match('/^(\\d+)(?::(\\d+))?$/',$raw,$m))return [(int)$m[1],isset($m[2])?(int)$m[2]:0];return [0,0];}
-function base_url():string{$p=str_replace('\\\\','/',dirname($_SERVER['SCRIPT_NAME']??'/'));$p=rtrim($p,'/');return $p===''||$p==='.'?'':$p;}
+function app_base_path_from_paths(string $appRoot,string $documentRoot,string $scriptName):string{
+ $normalize=static function(string $path):string{$path=str_replace('\\\\','/',$path);$path=preg_replace('~/+~','/',$path)??$path;return rtrim($path,'/');};
+ $app=$normalize(realpath($appRoot)?:$appRoot);$doc=$normalize(realpath($documentRoot)?:$documentRoot);
+ if($app!==''&&$doc!==''&&($app===$doc||str_starts_with($app,$doc.'/')))return $app===$doc?'':'/'.trim(substr($app,strlen($doc)),'/');
+ $script=parse_url($scriptName,PHP_URL_PATH)?:$scriptName;$script=str_replace('\\\\','/',$script);
+ $script=preg_replace('~/index\\.php(?:/.*)?$~i','',$script)??$script;
+ $dir=rtrim(str_replace('\\\\','/',dirname($script)),'/.');
+ return $dir===''||$dir==='.'?'':($dir[0]==='/'?$dir:'/'.$dir);
+}
+function app_base_path():string{return app_base_path_from_paths(APP_ROOT,(string)($_SERVER['DOCUMENT_ROOT']??''),(string)($_SERVER['SCRIPT_NAME']??'/'));}
+function app_route_path_from_uri(string $requestUri,string $basePath):string{
+ $path=parse_url($requestUri,PHP_URL_PATH)?:'/';$path=trim($path,'/');$base=trim(str_replace('\\\\','/',$basePath),'/');
+ if($base!==''&&($path===$base||str_starts_with($path,$base.'/')))$path=trim(substr($path,strlen($base)),'/');
+ return $path;
+}
+function base_url():string{return app_base_path();}
 function url(string $path=''):string{return base_url().'/'.ltrim($path,'/');}
 function absolute_url(string $path=''):string{$host=(string)($_SERVER['HTTP_HOST']??$_SERVER['SERVER_NAME']??'');if(!preg_match('/^[a-z0-9.-]+(?::[0-9]{1,5})?$/i',$host))throw new RuntimeException('Geçerli site alan adı belirlenemedi.');$https=(!empty($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off')||((int)($_SERVER['SERVER_PORT']??0)===443);return ($https?'https':'http').'://'.$host.url($path);}
 function e(mixed $v):string{return htmlspecialchars((string)$v,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');}

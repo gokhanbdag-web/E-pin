@@ -3,9 +3,7 @@ declare(strict_types=1);
 require __DIR__.'/app/bootstrap.php';
 require_once APP_ROOT.'/app/payments.php';
 if(!is_file(APP_ROOT.'/config.php')){require APP_ROOT.'/install/index.php';exit;}
-$path=trim(parse_url($_SERVER['REQUEST_URI']??'/',PHP_URL_PATH)?:'/','/');
-$base=trim(str_replace('\\\\','/',dirname($_SERVER['SCRIPT_NAME']??'/')),'/');
-if($base!==''&&str_starts_with($path,$base))$path=trim(substr($path,strlen($base)),'/');
+$path=app_route_path_from_uri((string)($_SERVER['REQUEST_URI']??'/'),app_base_path());
 $path=$path?:'home';
 
 if(str_starts_with($path,'payment/start/') && $_SERVER['REQUEST_METHOD']==='POST'){
