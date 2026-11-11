@@ -41,7 +41,7 @@ function payment_mark_paid(int $orderId,string $provider,string $reference=''):v
         if(!$o) throw new RuntimeException('Sipariş bulunamadı.');
         if($o['payment_status']!=='paid') {
             $pdo->prepare("UPDATE orders SET payment_status='paid',status='processing' WHERE id=?")->execute([$orderId]);
-            $pdo->prepare("UPDATE payment_transactions SET status='success',provider_reference=? WHERE order_id=? AND provider=?")->execute([$reference,$orderId,$provider]);
+            $pdo->prepare("UPDATE payment_transactions SET status='success' WHERE order_id=? AND provider=?")->execute([$orderId,$provider]);
         }
         $pdo->commit();
     } catch(Throwable $e) { if($pdo->inTransaction())$pdo->rollBack();throw $e; }

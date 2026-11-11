@@ -12,7 +12,7 @@ if(str_starts_with($path,'payment/start/') && $_SERVER['REQUEST_METHOD']==='POST
     csrf_check(); require_login();
     $orderId=(int)substr($path,14);
     $q=db()->prepare('SELECT * FROM orders WHERE id=? AND user_id=?');$q->execute([$orderId,(int)$_SESSION['user']['id']]);$order=$q->fetch();
-    if(!$order||$order['payment_status']==='paid'){http_response_code(404);exit('Sipariş bulunamadı veya zaten ödendi.');}
+    if(!$order||$order['payment_status']==='paid'||in_array($order['status'],['expired','payment_failed'],true)){http_response_code(404);exit('Sipariş bulunamadı veya zaten ödendi.');}
     $provider=(string)($_POST['provider']??'');
     $phone=trim((string)($_POST['phone']??''));$address=trim((string)($_POST['address']??''));$city=trim((string)($_POST['city']??''));$zip=trim((string)($_POST['zip']??''));
     $identity=preg_replace('/\D+/','',(string)($_POST['identity']??''));
@@ -57,8 +57,8 @@ if(str_starts_with($path,'payment/start/') && $_SERVER['REQUEST_METHOD']==='POST
 if($path==='payment/paytr-callback'&&$_SERVER['REQUEST_METHOD']==='POST'){
     $post=$_POST;
     if(!paytr_callback_valid($post)){http_response_code(400);echo 'PAYTR notification failed: bad hash';exit;}
-    $orderNo=(string)($post['merchant_oid']??'');$q=db()->prepare('SELECT id,total,payment_status FROM orders WHERE order_no=?');$q->execute([$orderNo]);$o=$q->fetch();
-    if(!$o){http_response_code(404);echo 'ORDER NOT FOUND';exit;}
+    $orderNo=(string)($post['merchant_oid']??'');$q=db()->prepare("SELECT o.id,o.total,o.payment_status,(SELECT COUNT(*) FROM payment_transactions pt WHERE pt.order_id=o.id AND pt.provider='paytr') AS has_attempt FROM orders o WHERE o.order_no=?");$q->execute([$orderNo]);$o=$q->fetch();
+    if(!$o||(int)$o['has_attempt']<1){http_response_code(404);echo 'ORDER NOT FOUND';exit;}
     if(($post['status']??'')==='success'){
       if((int)($post['total_amount']??0)<(int)round((float)$o['total']*100)){http_response_code(400);echo 'AMOUNT MISMATCH';exit;}
       payment_mark_paid((int)$o['id'],'paytr',$orderNo);
