@@ -1,5 +1,6 @@
 <?php
-$customSliderSlides=array_values(array_filter($sliderSlides??[],static fn($s)=>is_array($s)&&!empty($s['active'])&&!empty($s['title'])));
+$decodedSliderSlides=json_decode((string)($settings['slider_slides_json']??'[]'),true);if(!is_array($decodedSliderSlides))$decodedSliderSlides=[];
+$customSliderSlides=array_values(array_filter($decodedSliderSlides,static fn($s)=>is_array($s)&&!empty($s['active'])&&!empty($s['title'])));
 $sliderProducts=array_slice($products??[],0,5);
 $useCustomSlider=count($customSliderSlides)>0;
 $sliderItems=$useCustomSlider?$customSliderSlides:$sliderProducts;
