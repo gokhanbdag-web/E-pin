@@ -78,14 +78,14 @@ function payment_mark_paid(int $orderId,string $provider,string $reference=''):v
         if($o['payment_status']!=='paid' && in_array($o['status'],['cancelled','expired'],true)) {
             if(!empty($o['coupon_code']))$pdo->prepare('UPDATE coupons SET usage_count=usage_count+1 WHERE code=?')->execute([$o['coupon_code']]);
             $pdo->prepare("UPDATE orders SET payment_status='paid',status='manual_review' WHERE id=?")->execute([$orderId]);
-            $pdo->prepare("UPDATE payment_transactions SET status='success' WHERE order_id=? AND provider=? AND provider_reference=?")->execute([$orderId,$provider,$provider,$reference]);
+            $pdo->prepare("UPDATE payment_transactions SET status='success' WHERE order_id=? AND provider=? AND provider_reference=?")->execute([$orderId,$provider,$reference]);
             $pdo->commit();
             error_log('Late payment for cancelled/expired order '.$orderId.' requires manual review.');
             return;
         }
         if($o['payment_status']!=='paid') {
             $pdo->prepare("UPDATE orders SET payment_status='paid',status='processing' WHERE id=?")->execute([$orderId]);
-            $pdo->prepare("UPDATE payment_transactions SET status='success' WHERE order_id=? AND provider=? AND provider_reference=?")->execute([$orderId,$provider,$provider,$reference]);
+            $pdo->prepare("UPDATE payment_transactions SET status='success' WHERE order_id=? AND provider=? AND provider_reference=?")->execute([$orderId,$provider,$reference]);
         }
         $pdo->commit();
     } catch(Throwable $e) { if($pdo->inTransaction())$pdo->rollBack();throw $e; }
