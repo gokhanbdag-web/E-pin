@@ -31,7 +31,7 @@ if(str_starts_with($path,'payment/start/') && $_SERVER['REQUEST_METHOD']==='POST
         $hashStr=$merchantId.$ip.$orderNo.$user['email'].(string)round($amount*100).$basketEncoded.$noInstallment.$maxInstallment.$currency.$test.$user['name'].$address.$phone.$salt;
         $token=base64_encode(hash_hmac('sha256',$hashStr,$merchantKey,true));
         $response=payment_http_post('https://www.paytr.com/odeme/api/get-token',[
-          'merchant_id'=>$merchantId,'user_ip'=>$ip,'merchant_oid'=>$orderNo,'email'=>$user['email'],'payment_amount'=>(string)round($amount*100),'paytr_token'=>$token,'user_basket'=>$basketEncoded,'debug_on'=>$test,'no_installment'=>$noInstallment,'max_installment'=>$maxInstallment,'user_name'=>$user['name'],'user_address'=>$address,'user_phone'=>$phone,'merchant_ok_url'=>url('order/'.$orderId),'merchant_fail_url'=>url('order/'.$orderId),'timeout_limit'=>'30','currency'=>$currency,'test_mode'=>$test,'lang'=>'tr'
+          'merchant_id'=>$merchantId,'user_ip'=>$ip,'merchant_oid'=>$orderNo,'email'=>$user['email'],'payment_amount'=>(string)round($amount*100),'paytr_token'=>$token,'user_basket'=>$basketEncoded,'debug_on'=>$test,'no_installment'=>$noInstallment,'max_installment'=>$maxInstallment,'user_name'=>$user['name'],'user_address'=>$address,'user_phone'=>$phone,'merchant_ok_url'=>absolute_url('order/'.$orderId),'merchant_fail_url'=>absolute_url('order/'.$orderId),'timeout_limit'=>'30','currency'=>$currency,'test_mode'=>$test,'lang'=>'tr'
         ],['Content-Type: application/x-www-form-urlencoded']);
         $data=json_decode($response['body'],true);
         if(($data['status']??'')!=='success'||empty($data['token']))throw new RuntimeException('PayTR ödeme oturumu oluşturulamadı: '.($data['reason']??'Sağlayıcı yanıtı başarısız.'));
@@ -40,7 +40,7 @@ if(str_starts_with($path,'payment/start/') && $_SERVER['REQUEST_METHOD']==='POST
       } elseif($provider==='iyzico'){
         if(payment_secret('iyzico_enabled')!=='1')throw new RuntimeException('iyzico şu anda etkin değil.');
         if(strlen($identity)!==11)throw new RuntimeException('iyzico için 11 haneli T.C. kimlik numarası gereklidir.');
-        $base=url('payment/iyzico-callback');
+        $base=absolute_url('payment/iyzico-callback');
         $items=db()->prepare('SELECT id,product_name,quantity,unit_price FROM order_items WHERE order_id=?');$items->execute([$orderId]);$basketItems=[];$idx=1;
         foreach($items->fetchAll() as $it){$basketItems[]=['id'=>(string)$it['id'],'name'=>$it['product_name'],'category1'=>'Dijital Oyun Ürünleri','itemType'=>'VIRTUAL','price'=>number_format((float)$it['unit_price']*(int)$it['quantity'],2,'.','')];$idx++;}
         $buyerName=explode(' ',$user['name']);$surname=count($buyerName)>1?array_pop($buyerName):'Müşteri';$name=implode(' ',$buyerName)?:$user['name'];
