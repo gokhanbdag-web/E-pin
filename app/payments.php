@@ -41,7 +41,7 @@ function payment_http_post(string $url,array $payload,array $headers=[]):array {
 function cancel_unpaid_order(int $orderId,?int $ownerId=null):void {
     $pdo=db();$pdo->beginTransaction();
     try {
-        $sql='SELECT id,payment_status,status FROM orders WHERE id=?'.($ownerId!==null?' AND user_id=?':'').' FOR UPDATE';
+        $sql='SELECT id,payment_status,status,coupon_code FROM orders WHERE id=?'.($ownerId!==null?' AND user_id=?':'').' FOR UPDATE';
         $q=$pdo->prepare($sql);$q->execute($ownerId!==null?[$orderId,$ownerId]:[$orderId]);$order=$q->fetch();
         if(!$order)throw new RuntimeException('Sipariş bulunamadı.');
         if($order['payment_status']==='paid')throw new RuntimeException('Ödemesi alınmış sipariş iptal edilemez; iade talebi oluşturun.');
