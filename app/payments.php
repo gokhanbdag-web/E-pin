@@ -47,7 +47,7 @@ function cancel_unpaid_order(int $orderId,?int $ownerId=null):void {
         if($order['payment_status']==='paid')throw new RuntimeException('Ödemesi alınmış sipariş iptal edilemez; iade talebi oluşturun.');
         if(!in_array($order['status'],['pending','payment_failed'],true))throw new RuntimeException('Bu sipariş artık iptal edilemez.');
         $pdo->prepare("UPDATE inventory_codes SET status='available',reserved_order_id=NULL,reserved_until=NULL WHERE reserved_order_id=? AND status='reserved'")->execute([$orderId]);
-        $pdo->prepare("UPDATE orders SET status='cancelled' WHERE id=?")->execute([$orderId]);
+        $pdo->prepare("UPDATE orders SET status='cancelled' WHERE id=?")->execute([$orderId]);if(!empty($order['coupon_code']))$pdo->prepare('UPDATE coupons SET usage_count=GREATEST(usage_count-1,0) WHERE code=?')->execute([$order['coupon_code']]);
         $pdo->prepare("UPDATE payment_transactions SET status='cancelled' WHERE order_id=? AND status='pending'")->execute([$orderId]);
         $pdo->commit();
     } catch(Throwable $e) {if($pdo->inTransaction())$pdo->rollBack();throw $e;}
@@ -55,7 +55,7 @@ function cancel_unpaid_order(int $orderId,?int $ownerId=null):void {
 function payment_mark_paid(int $orderId,string $provider,string $reference=''):void {
     $pdo=db();$pdo->beginTransaction();
     try {
-        $q=$pdo->prepare('SELECT id,payment_status,status FROM orders WHERE id=? FOR UPDATE');$q->execute([$orderId]);$o=$q->fetch();
+        $q=$pdo->prepare('SELECT id,payment_status,status,coupon_code FROM orders WHERE id=? FOR UPDATE');$q->execute([$orderId]);$o=$q->fetch();
         if(!$o) throw new RuntimeException('Sipariş bulunamadı.');
         if($o['payment_status']!=='paid' && in_array($o['status'],['cancelled','expired'],true)) {
             $pdo->prepare("UPDATE orders SET payment_status='paid',status='manual_review' WHERE id=?")->execute([$orderId]);
