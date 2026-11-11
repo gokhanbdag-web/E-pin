@@ -24,8 +24,8 @@ if(str_starts_with($path,'payment/start/') && $_SERVER['REQUEST_METHOD']==='POST
         $merchantId=payment_secret('paytr_merchant_id');$merchantKey=payment_secret('paytr_merchant_key');$salt=payment_secret('paytr_merchant_salt');
         if($merchantId===''||$merchantKey===''||$salt==='')throw new RuntimeException('PayTR mağaza bilgileri eksik.');
         $ip=(string)($_SERVER['REMOTE_ADDR']??'127.0.0.1');$basket=[];
-        $items=db()->prepare('SELECT product_name,quantity,unit_price FROM order_items WHERE order_id=?');$items->execute([$orderId]);
-        foreach($items->fetchAll() as $it)$basket[]=[$it['product_name'],number_format((float)$it['unit_price'],2,'.',''),(int)$it['quantity']];
+        $items=db()->prepare('SELECT product_name,quantity,unit_price,discount_amount FROM order_items WHERE order_id=?');$items->execute([$orderId]);
+        foreach($items->fetchAll() as $it){$qty=max(1,(int)$it['quantity']);$lineNet=max(0,round((float)$it['unit_price']*$qty-(float)$it['discount_amount'],2));$basket[]=[$it['product_name'],number_format($lineNet/$qty,2,'.',''),$qty];}
         $basketEncoded=base64_encode(json_encode($basket,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
         $test=payment_secret('paytr_sandbox')==='1'?'1':'0';$noInstallment='1';$maxInstallment='0';$currency='TL';
         $hashStr=$merchantId.$ip.$orderNo.$user['email'].(string)round($amount*100).$basketEncoded.$noInstallment.$maxInstallment.$currency.$test.$user['name'].$address.$phone.$salt;
@@ -41,8 +41,8 @@ if(str_starts_with($path,'payment/start/') && $_SERVER['REQUEST_METHOD']==='POST
         if(payment_secret('iyzico_enabled')!=='1')throw new RuntimeException('iyzico şu anda etkin değil.');
         if(strlen($identity)!==11)throw new RuntimeException('iyzico için 11 haneli T.C. kimlik numarası gereklidir.');
         $base=absolute_url('payment/iyzico-callback');
-        $items=db()->prepare('SELECT id,product_name,quantity,unit_price FROM order_items WHERE order_id=?');$items->execute([$orderId]);$basketItems=[];$idx=1;
-        foreach($items->fetchAll() as $it){$basketItems[]=['id'=>(string)$it['id'],'name'=>$it['product_name'],'category1'=>'Dijital Oyun Ürünleri','itemType'=>'VIRTUAL','price'=>number_format((float)$it['unit_price']*(int)$it['quantity'],2,'.','')];$idx++;}
+        $items=db()->prepare('SELECT id,product_name,quantity,unit_price,discount_amount FROM order_items WHERE order_id=?');$items->execute([$orderId]);$basketItems=[];$idx=1;
+        foreach($items->fetchAll() as $it){$qty=max(1,(int)$it['quantity']);$lineNet=max(0,round((float)$it['unit_price']*$qty-(float)$it['discount_amount'],2));$basketItems[]=['id'=>(string)$it['id'],'name'=>$it['product_name'],'category1'=>'Dijital Oyun Ürünleri','itemType'=>'VIRTUAL','price'=>number_format($lineNet,2,'.','')];$idx++;}
         $buyerName=explode(' ',$user['name']);$surname=count($buyerName)>1?array_pop($buyerName):'Müşteri';$name=implode(' ',$buyerName)?:$user['name'];
         $payload=['locale'=>'tr','conversationId'=>$orderNo,'price'=>$amountText,'paidPrice'=>$amountText,'currency'=>'TRY','basketId'=>$orderNo,'paymentGroup'=>'PRODUCT','callbackUrl'=>$base,'enabledInstallments'=>[1,2,3,6,9],'buyer'=>['id'=>(string)$user['id'],'name'=>$name,'surname'=>$surname,'identityNumber'=>$identity,'email'=>$user['email'],'gsmNumber'=>$phone,'registrationAddress'=>$address,'city'=>$city,'country'=>'Turkey','zipCode'=>$zip,'ip'=>$ip=(string)($_SERVER['REMOTE_ADDR']??'127.0.0.1')],'shippingAddress'=>['contactName'=>$user['name'],'city'=>$city,'country'=>'Turkey','address'=>$address,'zipCode'=>$zip],'billingAddress'=>['contactName'=>$user['name'],'city'=>$city,'country'=>'Turkey','address'=>$address,'zipCode'=>$zip],'basketItems'=>$basketItems];
         $data=iyzico_request('/payment/iyzipos/checkoutform/initialize/auth/ecom',$payload);
