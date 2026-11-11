@@ -12,7 +12,7 @@ if(str_starts_with($path,'payment/start/') && $_SERVER['REQUEST_METHOD']==='POST
     csrf_check(); require_login();
     $orderId=(int)substr($path,14);
     $q=db()->prepare('SELECT * FROM orders WHERE id=? AND user_id=?');$q->execute([$orderId,(int)$_SESSION['user']['id']]);$order=$q->fetch();
-    if(!$order||$order['payment_status']==='paid'||in_array($order['status'],['expired','payment_failed'],true)){http_response_code(404);exit('Sipariş bulunamadı veya zaten ödendi.');}
+    if(!$order||$order['payment_status']==='paid'||$order['status']==='expired'){http_response_code(404);exit('Sipariş bulunamadı veya zaten ödendi.');}
     $provider=(string)($_POST['provider']??'');
     $phone=trim((string)($_POST['phone']??''));$address=trim((string)($_POST['address']??''));$city=trim((string)($_POST['city']??''));$zip=trim((string)($_POST['zip']??''));
     $identity=preg_replace('/\D+/','',(string)($_POST['identity']??''));
