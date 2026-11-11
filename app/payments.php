@@ -57,6 +57,24 @@ function payment_mark_paid(int $orderId,string $provider,string $reference=''):v
     try {
         $q=$pdo->prepare('SELECT id,payment_status,status,coupon_code FROM orders WHERE id=? FOR UPDATE');$q->execute([$orderId]);$o=$q->fetch();
         if(!$o) throw new RuntimeException('Sipariş bulunamadı.');
+        $q=$pdo->prepare("SELECT status FROM refund_requests WHERE order_id=? LIMIT 1 FOR UPDATE");$q->execute([$orderId]);$refundStatus=$q->fetchColumn();
+        if($o['status']==='refunded') {
+            $pdo->commit();
+            error_log('Payment callback ignored for refunded order '.$orderId.'.');
+            return;
+        }
+        if(in_array($refundStatus,['requested','approved'],true)) {
+            if($o['payment_status']!=='paid') {
+                if(!empty($o['coupon_code']))$pdo->prepare('UPDATE coupons SET usage_count=usage_count+1 WHERE code=?')->execute([$o['coupon_code']]);
+                $pdo->prepare("UPDATE orders SET payment_status='paid',status='manual_review' WHERE id=?")->execute([$orderId]);
+            } else {
+                $pdo->prepare("UPDATE orders SET status='manual_review' WHERE id=?")->execute([$orderId]);
+            }
+            $pdo->prepare("UPDATE payment_transactions SET status='success' WHERE order_id=? AND provider=? AND (?<>'iyzico' OR provider_reference=?)")->execute([$orderId,$provider,$provider,$reference]);
+            $pdo->commit();
+            error_log('Payment received while refund request is open for order '.$orderId.'; manual review required.');
+            return;
+        }
         if($o['payment_status']!=='paid' && in_array($o['status'],['cancelled','expired'],true)) {
             if(!empty($o['coupon_code']))$pdo->prepare('UPDATE coupons SET usage_count=usage_count+1 WHERE code=?')->execute([$o['coupon_code']]);
             $pdo->prepare("UPDATE orders SET payment_status='paid',status='manual_review' WHERE id=?")->execute([$orderId]);
