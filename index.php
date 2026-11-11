@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 require __DIR__.'/app/bootstrap.php';
+require_once APP_ROOT.'/app/payments.php';
 if(!is_file(APP_ROOT.'/config.php')){require APP_ROOT.'/install/index.php';exit;}
 $path=trim(parse_url($_SERVER['REQUEST_URI']??'/',PHP_URL_PATH)?:'/','/');
 $base=trim(str_replace('\\\\','/',dirname($_SERVER['SCRIPT_NAME']??'/')),'/');
