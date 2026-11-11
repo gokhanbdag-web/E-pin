@@ -54,7 +54,7 @@ elseif($resource==='refunds'&&$action==='review'){$id=(int)($_POST['id']??0);$de
 }
 elseif($resource==='inventory'&&$action==='import_codes'){$productId=(int)($_POST['product_id']??0);$variantId=(int)($_POST['variant_id']??0);$st=db()->prepare("SELECT id FROM products WHERE id=?");$st->execute([$productId]);if(!$st->fetch())throw new RuntimeException('Ürün seçin.');if($variantId){$vst=db()->prepare("SELECT id FROM product_variants WHERE id=? AND product_id=? AND status='active'");$vst->execute([$variantId,$productId]);if(!$vst->fetch())throw new RuntimeException('Seçilen varyant bu ürüne ait değil veya yayında değil.');}$lines=preg_split('/\r\n|\r|\n/',(string)($_POST['codes']??''));$added=0;$duplicates=0;$ins=db()->prepare("INSERT IGNORE INTO inventory_codes(product_id,variant_id,code_ciphertext,code_nonce,code_tag,code_hash,status) VALUES(?,?,?,?,?,?,'available')");foreach($lines as $line){$code=trim($line);if($code==='')continue;if(strlen($code)<3||strlen($code)>250)throw new RuntimeException('Kod uzunluğu 3–250 karakter arasında olmalı.');[$cipher,$nonce,$tag,$hash]=inventory_encrypt($code);$ins->execute([$productId,$variantId?:null,$cipher,$nonce,$tag,$hash]);if($ins->rowCount())$added++;else $duplicates++;}db()->prepare("UPDATE products SET delivery_type='automatic' WHERE id=?")->execute([$productId]);flash('success',$added.' kod stoğa eklendi. Tekrarlanan kod: '.$duplicates.'. Ürün otomatik teslimata alındı.');}
  elseif($resource==='demo'&&$action==='seed'){
- $pdo=db();$pdo->beginTransaction();try{
+ $resource='overview';$pdo=db();$pdo->beginTransaction();try{
   $check=$pdo->prepare("SELECT setting_value FROM settings WHERE setting_key='demo_content_seeded'");$check->execute();if($check->fetchColumn())throw new RuntimeException('Demo içerikleri daha önce eklenmiş. Mevcut içerikleriniz korunuyor.');
   $categoryData=[
    ['PC Oyunları','pc-oyunlari','Steam, PC oyunları ve dijital oyun bakiyeleri.'],
@@ -74,12 +74,12 @@ elseif($resource==='inventory'&&$action==='import_codes'){$productId=(int)($_POS
    ['Valorant VP 1000','valorant-vp-1000','Daha büyük VP paketi.','Demo ürün; gerçek kod içermez.','249.90','pc-oyunlari','photo-1542751371-adc38448a05e'],
    ['Minecraft Java & Bedrock','minecraft-java-bedrock','Minecraft PC sürümü için dijital lisans ürün sayfası.','Platform ve bölge uyumluluğunu satın alma öncesinde kontrol edin.','699.90','pc-oyunlari','photo-1603481546238-487240415921'],
    ['EA SPORTS FC Points','ea-sports-fc-points','EA SPORTS FC için örnek puan paketi.','Dijital içerik ürünü; demo kayıt.','199.90','pc-oyunlari','photo-1511512578047-dfb367046420'],
-   ['PlayStation Store 250 TL','ps-store-250','PlayStation Store cüzdan bakiyesi.','PSN hesabınızın bölgesi ile uyumlu ürün seçmeniz gerekir.','250.00','playstation','photo- Sony'],
+   ['PlayStation Store 250 TL','ps-store-250','PlayStation Store cüzdan bakiyesi.','PSN hesabınızın bölgesi ile uyumlu ürün seçmeniz gerekir.','250.00','playstation','photo-1493711662062-fa541adb3fc8'],
    ['PlayStation Store 500 TL','ps-store-500','PlayStation Store için 500 TL bakiye.','Demo ürün sayfası; gerçek kod teslim edilmez.','500.00','playstation','photo-1535223289827-42f1e9919769'],
    ['PlayStation Plus Essential 3 Ay','ps-plus-essential-3','Çevrimiçi çok oyunculu deneyim ve aylık oyunlar.','Üyelik bölge koşulları satın alma öncesinde kontrol edilmelidir.','499.90','playstation','photo-1605901309584-818e25960a8f'],
    ['PlayStation Plus Extra 12 Ay','ps-plus-extra-12','Geniş oyun kataloğu için örnek üyelik paketi.','Demo ürün; gerçek abonelik başlatılmaz.','2499.90','playstation','photo-1605901309584-818e25960a8f'],
    ['PS5 Dijital Oyun Hediye Kartı','ps5-digital-gift','PlayStation oyuncuları için hediye seçeneği.','Hediye kartı ürün sayfası örneği.','349.90','playstation','photo-1486572788966-cfd3df1f5b42'],
-   ['Xbox Game Pass Ultimate 1 Ay','xbox-game-pass-1','Xbox ve PC oyun kataloğu üyeliği.','Üyelik avantajları ve bölge uyumluluğu ürün detayında yönetilebilir.','299.90','xbox','photo- xbox'],
+   ['Xbox Game Pass Ultimate 1 Ay','xbox-game-pass-1','Xbox ve PC oyun kataloğu üyeliği.','Üyelik avantajları ve bölge uyumluluğu ürün detayında yönetilebilir.','299.90','xbox','photo-1542751371-adc38448a05e'],
    ['Xbox Game Pass Ultimate 3 Ay','xbox-game-pass-3','Üç aylık Game Pass örnek üyelik paketi.','Demo içeriktir; gerçek üyelik kodu bulunmaz.','799.90','xbox','photo- xbox'],
    ['Xbox Hediye Kartı 300 TL','xbox-gift-300','Xbox hesabınız için dijital bakiye.','Hesap bölgesi ile uyumlu hediye kartı seçin.','300.00','xbox','photo-1535223289827-42f1e9919769'],
    ['Xbox Hediye Kartı 500 TL','xbox-gift-500','Xbox Store bakiyesi için örnek ürün.','Demo ürün sayfası.','500.00','xbox','photo-1535223289827-42f1e9919769'],
@@ -101,7 +101,7 @@ elseif($resource==='inventory'&&$action==='import_codes'){$productId=(int)($_POS
   ];
   $ins=$pdo->prepare("INSERT INTO products(category_id,name,slug,short_description,description,price,image,delivery_type,status,sort_order) VALUES(?,?,?,?,?,?,?,'manual','active',?)");
   $variant=$pdo->prepare("INSERT INTO product_variants(product_id,name,sku,price,status,sort_order) VALUES(?,?,?,?, 'active',?)");
-  foreach($products as $i=>$p){$image=$p[6]==='photo- Sony'||$p[6]==='photo- xbox'?'https://images.unsplash.com/photo-1493711662062-fa541adb3fc8?auto=format&fit=crop&w=900&q=82':'https://images.unsplash.com/'.$p[6].'?auto=format&fit=crop&w=900&q=82';$ins->execute([$catIds[$p[5]],$p[0],$p[1],$p[2],$p[3],$p[4],$image,$i+1]);$pid=(int)$pdo->lastInsertId();if($i<8||$i===10||$i===13||$i===17){$variant->execute([$pid,'Dijital teslimat','DEMO-'.strtoupper(str_replace('-','',$p[1])),(float)$p[4],1]);}}
+  foreach($products as $i=>$p){$image='https://images.unsplash.com/'.$p[6].'?auto=format&fit=crop&w=900&q=82';$ins->execute([$catIds[$p[5]],$p[0],$p[1],$p[2],$p[3],$p[4],$image,$i+1]);$pid=(int)$pdo->lastInsertId();if($i<8||$i===10||$i===13||$i===17){$variant->execute([$pid,'Dijital teslimat','DEMO-'.strtoupper(str_replace('-','',$p[1])),(float)$p[4],1]);}}
   $pages=[
    ['Hakkımızda','hakkimizda','<h2>Oyun dünyasına açılan mağazanız</h2><p>Bu demo mağaza, E-pin platformunun içerik yönetimi ve vitrin deneyimini incelemeniz için hazırlanmıştır. Marka hikâyenizi, hizmet yaklaşımınızı ve güven ilkelerinizi bu alandan düzenleyebilirsiniz.</p><p>Ürün, kategori ve sayfa içerikleri yönetim panelinden güncellenebilir.</p>'],
    ['Sıkça Sorulan Sorular','sss','<h2>Dijital ürün nasıl satın alınır?</h2><p>Ürünü seçin, varsa paket seçeneğini belirleyin ve sepete ekleyin. Ödeme sağlayıcıları yapılandırılmadan gerçek tahsilat yapılmaz.</p><h2>Kodlar nasıl teslim edilir?</h2><p>Otomatik teslimat için gerçek kod stoğu eklenmelidir. Demo ürünlerde gerçek kod bulunmaz.</p><h2>Hesap bölgesi önemli mi?</h2><p>Hediye kartı ve üyeliklerde ürünün bölge koşullarını kontrol edin.</p>'],
@@ -109,7 +109,7 @@ elseif($resource==='inventory'&&$action==='import_codes'){$productId=(int)($_POS
    ['İletişim','iletisim','<h2>Bize ulaşın</h2><p>Destek taleplerinizi müşteri hesabınızdan iletebilirsiniz. E-posta, telefon ve çalışma saatlerinizi mağaza bilgilerinize göre güncelleyin.</p>'],
    ['Gizlilik Politikası','gizlilik-politikasi','<h2>Gizlilik ve kişisel veriler</h2><p>Bu örnek metin yayına alınmadan önce işletmenizin veri işleme faaliyetlerine ve yürürlükteki mevzuata göre hukuk danışmanınız tarafından düzenlenmelidir.</p>']
   ];
-  $page=$pdo->prepare("INSERT INTO pages(title,slug,content,status) VALUES(?,?,?,'published')");foreach($pages as $v)$page->execute($v);
+  $page=$pdo->prepare("INSERT INTO pages(title,slug,content,status) VALUES(?,?,?,'active')");foreach($pages as $v)$page->execute($v);
   $menus=[['Ana sayfa','',1],['Hakkımızda','page/hakkimizda',2],['Sıkça Sorulanlar','page/sss',3],['Teslimat & İade','page/teslimat-iade',4],['İletişim','page/iletisim',5]];
   $menu=$pdo->prepare("INSERT INTO menus(title,url,location,sort_order,status) VALUES(?,?,'header',?,'active')");foreach($menus as $v)$menu->execute($v);
   $coupon=$pdo->prepare("INSERT INTO coupons(code,discount_type,discount_value,min_order,max_discount,usage_limit,status) VALUES(?,?,?,?,?,0,'active')");$coupon->execute(['HOSGELDIN10','percent',10,100,150]);$coupon->execute(['OYUN50','fixed',50,300,50]);
