@@ -12,7 +12,7 @@ if(str_starts_with($path,'payment/start/') && $_SERVER['REQUEST_METHOD']==='POST
     csrf_check(); require_login();
     $orderId=(int)substr($path,14);
     $q=db()->prepare('SELECT * FROM orders WHERE id=? AND user_id=?');$q->execute([$orderId,(int)$_SESSION['user']['id']]);$order=$q->fetch();
-    if(!$order||$order['payment_status']==='paid'||$order['status']==='expired'){http_response_code(404);exit('Sipariş bulunamadı veya zaten ödendi.');}
+    if(!$order||$order['payment_status']==='paid'||!in_array($order['status'],['pending','payment_failed'],true)){http_response_code(404);exit('Sipariş bulunamadı, iptal edilmiş veya ödemeye uygun değil.');}
     $provider=(string)($_POST['provider']??'');
     $phone=trim((string)($_POST['phone']??''));$address=trim((string)($_POST['address']??''));$city=trim((string)($_POST['city']??''));$zip=trim((string)($_POST['zip']??''));
     $identity=preg_replace('/\D+/','',(string)($_POST['identity']??''));
@@ -62,14 +62,14 @@ if($path==='payment/paytr-callback'&&$_SERVER['REQUEST_METHOD']==='POST'){
     if(($post['status']??'')==='success'){
       if(!isset($post['total_amount'])||!ctype_digit((string)$post['total_amount'])||(int)$post['total_amount']!==(int)round((float)$o['total']*100)){http_response_code(400);echo 'AMOUNT MISMATCH';exit;}
       payment_mark_paid((int)$o['id'],'paytr',$orderNo);
-    }else{db()->prepare("UPDATE orders SET payment_status='failed',status='payment_failed' WHERE id=? AND payment_status<>'paid'")->execute([(int)$o['id']]);db()->prepare("UPDATE payment_transactions SET status='failed' WHERE order_id=? AND provider='paytr'")->execute([(int)$o['id']]);}
+    }else{db()->prepare("UPDATE orders SET payment_status='failed',status='payment_failed' WHERE id=? AND payment_status<>'paid' AND status IN ('pending','payment_failed')")->execute([(int)$o['id']]);db()->prepare("UPDATE payment_transactions SET status='failed' WHERE order_id=? AND provider='paytr' AND status='pending'")->execute([(int)$o['id']]);}
     echo 'OK';exit;
 }
 if($path==='payment/iyzico-callback'&&$_SERVER['REQUEST_METHOD']==='POST'){
     $token=trim((string)($_POST['token']??''));if($token===''){http_response_code(400);exit('Missing token');}
     $q=db()->prepare("SELECT pt.order_id,pt.amount,o.total,o.order_no FROM payment_transactions pt JOIN orders o ON o.id=pt.order_id WHERE pt.provider='iyzico' AND pt.provider_reference=? ORDER BY pt.id DESC LIMIT 1");$q->execute([$token]);$tx=$q->fetch();
     if(!$tx){http_response_code(404);exit('Transaction not found');}
-    try{if(!payment_amount_matches($tx['amount'],$tx['total']))throw new RuntimeException('iyzico işlem tutarı sipariş tutarıyla eşleşmiyor.');$result=iyzico_request('/payment/iyzipos/checkoutform/auth/ecom/detail',['locale'=>'tr','conversationId'=>$tx['order_no'],'token'=>$token]);if(($result['status']??'')==='success'&&($result['paymentStatus']??'')==='SUCCESS'&&payment_amount_matches($result['paidPrice']??null,$tx['total'])){payment_mark_paid((int)$tx['order_id'],'iyzico',(string)($result['paymentId']??$token));}else{db()->prepare("UPDATE orders SET payment_status='failed',status='payment_failed' WHERE id=? AND payment_status<>'paid'")->execute([(int)$tx['order_id']]);db()->prepare("UPDATE payment_transactions SET status='failed' WHERE order_id=? AND provider='iyzico'")->execute([(int)$tx['order_id']]);}}
+    try{if(!payment_amount_matches($tx['amount'],$tx['total']))throw new RuntimeException('iyzico işlem tutarı sipariş tutarıyla eşleşmiyor.');$result=iyzico_request('/payment/iyzipos/checkoutform/auth/ecom/detail',['locale'=>'tr','conversationId'=>$tx['order_no'],'token'=>$token]);if(($result['status']??'')==='success'&&($result['paymentStatus']??'')==='SUCCESS'&&payment_amount_matches($result['paidPrice']??null,$tx['total'])){payment_mark_paid((int)$tx['order_id'],'iyzico',(string)($result['paymentId']??$token));}else{db()->prepare("UPDATE orders SET payment_status='failed',status='payment_failed' WHERE id=? AND payment_status<>'paid' AND status IN ('pending','payment_failed')")->execute([(int)$tx['order_id']]);db()->prepare("UPDATE payment_transactions SET status='failed' WHERE order_id=? AND provider='iyzico' AND status='pending'")->execute([(int)$tx['order_id']]);}}
     catch(Throwable $e){error_log('iyzico callback: '.$e->getMessage());http_response_code(500);exit('Callback verification failed');}
     redirect(url('order/'.$tx['order_id']));
 }
