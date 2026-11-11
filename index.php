@@ -116,6 +116,44 @@ if($path==='seller'||str_starts_with($path,'seller/')){
  require_login('seller');
  $q=db()->prepare("SELECT * FROM seller_profiles WHERE user_id=? AND status='approved' LIMIT 1");$q->execute([(int)$_SESSION['user']['id']]);$sellerProfile=$q->fetch();
  if(!$sellerProfile){http_response_code(403);exit('Satıcı hesabınız aktif değil.');}
+ if($path==='seller/products'){
+  $sellerId=(int)$sellerProfile['id'];
+  if($_SERVER['REQUEST_METHOD']==='POST'){
+   csrf_check();$action=(string)($_POST['action']??'');
+   try{
+    if($action==='save_product'){
+     $id=(int)($_POST['id']??0);$name=trim((string)($_POST['name']??''));$price=(string)($_POST['price']??'');$category=(int)($_POST['category_id']??0);
+     $delivery=(string)($_POST['delivery_type']??'manual');$status=(string)($_POST['status']??'draft');
+     if(strlen($name)<3||strlen($name)>190||!is_numeric($price)||(float)$price<0)throw new RuntimeException('Ürün adı ve geçerli fiyat girin.');
+     if(!in_array($delivery,['manual','automatic'],true)||!in_array($status,['active','draft'],true))throw new RuntimeException('Geçersiz ürün ayarı.');
+     $q=db()->prepare('SELECT id FROM categories WHERE id=? AND status=\'active\'');$q->execute([$category]);if(!$q->fetch())throw new RuntimeException('Aktif bir kategori seçin.');
+     $ascii=function_exists('iconv')?iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$name):$name;$slug=trim(preg_replace('/[^a-z0-9]+/','-',strtolower($ascii?:$name)),'-');
+     $slug=substr($slug?:'urun',0,145).'-s'.$sellerId.($id?'-'.$id:'-'.strtolower(bin2hex(random_bytes(3))));
+     $data=[$category,$name,$slug,trim((string)($_POST['short_description']??'')),trim((string)($_POST['description']??'')),number_format((float)$price,2,'.',''),trim((string)($_POST['image']??'')),$delivery,$status,$sellerId];
+     if($id){$q=db()->prepare('UPDATE products SET category_id=?,name=?,slug=?,short_description=?,description=?,price=?,image=?,delivery_type=?,status=? WHERE seller_id=? AND id=?');$q->execute([...array_slice($data,0,9),$sellerId,$id]);}
+     else{$q=db()->prepare('INSERT INTO products(category_id,name,slug,short_description,description,price,image,delivery_type,status,seller_id) VALUES(?,?,?,?,?,?,?,?,?,?)');$q->execute($data);}
+     flash('success','Ürün kaydedildi.');
+    }elseif($action==='import_codes'){
+     $productId=(int)($_POST['product_id']??0);$q=db()->prepare('SELECT id FROM products WHERE id=? AND seller_id=?');$q->execute([$productId,$sellerId]);if(!$q->fetch())throw new RuntimeException('Bu ürün mağazanıza ait değil.');
+     $lines=preg_split('/\r\n|\r|\n/',(string)($_POST['codes']??''));$added=0;$duplicates=0;
+     $ins=db()->prepare("INSERT IGNORE INTO inventory_codes(product_id,code_ciphertext,code_nonce,code_tag,code_hash,status) VALUES(?,?,?,?,?,'available')");
+     foreach($lines as $line){$code=trim($line);if($code==='')continue;if(strlen($code)<3||strlen($code)>250)throw new RuntimeException('Kod uzunluğu 3–250 karakter arasında olmalı.');[$cipher,$nonce,$tag,$hash]=inventory_encrypt($code);$ins->execute([$productId,$cipher,$nonce,$tag,$hash]);if($ins->rowCount())$added++;else $duplicates++;}
+     db()->prepare("UPDATE products SET delivery_type='automatic' WHERE id=? AND seller_id=?")->execute([$productId,$sellerId]);
+     flash('success',$added.' kod eklendi. Tekrarlanan kod: '.$duplicates.'.');
+    }else throw new RuntimeException('Geçersiz satıcı işlemi.');
+   }catch(Throwable $e){flash('error',$e->getMessage());}
+   redirect(url('seller/products'));
+  }
+  $q=db()->prepare('SELECT id,name,slug,price,delivery_type,status FROM products WHERE seller_id=? ORDER BY id DESC');$q->execute([$sellerId]);$sellerProducts=$q->fetchAll();
+  $q=db()->query("SELECT id,name FROM categories WHERE status='active' ORDER BY sort_order,name");$sellerCategories=$q->fetchAll();
+  $editProduct=null;if(isset($_GET['edit'])){$q=db()->prepare('SELECT * FROM products WHERE id=? AND seller_id=?');$q->execute([(int)$_GET['edit'],$sellerId]);$editProduct=$q->fetch()?:null;}
+  $q=db()->prepare("SELECT p.id,p.name,SUM(i.status='available') AS available,SUM(i.status='reserved') AS reserved,SUM(i.status='sold') AS sold FROM products p LEFT JOIN inventory_codes i ON i.product_id=p.id WHERE p.seller_id=? GROUP BY p.id,p.name ORDER BY p.name");$q->execute([$sellerId]);$sellerStock=$q->fetchAll();
+  render('seller/products',['title'=>'Ürün ve stok yönetimi','sellerProducts'=>$sellerProducts,'sellerCategories'=>$sellerCategories,'editProduct'=>$editProduct,'sellerStock'=>$sellerStock]);exit;
+ }
+ if($path==='seller/orders'){
+  $q=db()->prepare("SELECT o.order_no,o.created_at,o.payment_status,o.status,oi.product_name,oi.quantity,oi.unit_price,(oi.quantity*oi.unit_price) AS line_total FROM order_items oi JOIN products p ON p.id=oi.product_id JOIN orders o ON o.id=oi.order_id WHERE p.seller_id=? ORDER BY o.id DESC LIMIT 300");$q->execute([(int)$sellerProfile['id']]);$sellerOrders=$q->fetchAll();
+  render('seller/orders',['title'=>'Satış siparişleri','sellerOrders'=>$sellerOrders]);exit;
+ }
  if($path!=='seller'){http_response_code(404);exit('Sayfa bulunamadı');}
  $q=db()->prepare('SELECT COUNT(*) FROM products WHERE seller_id=?');$q->execute([(int)$sellerProfile['id']]);$sellerProductCount=(int)$q->fetchColumn();
  $q=db()->prepare("SELECT COUNT(*) FROM order_items oi JOIN products p ON p.id=oi.product_id JOIN orders o ON o.id=oi.order_id WHERE p.seller_id=? AND o.payment_status='paid'");$q->execute([(int)$sellerProfile['id']]);$sellerSalesCount=(int)$q->fetchColumn();
