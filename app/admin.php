@@ -142,7 +142,7 @@ elseif($resource==='inventory'&&$action==='import_codes'){$productId=(int)($_POS
    if(strlen($description)>600)throw new RuntimeException('Slider açıklaması en fazla 600 karakter olabilir.');
    if($link==='')$link='#';
    if(preg_match('~^(javascript:|data:)~i',$link)||!preg_match('~^(https?://|/|#|[a-zA-Z0-9_-])~',$link))throw new RuntimeException('Slider bağlantısı geçersiz.');
-   $slides[]=['id'=>$id!==''?$id:bin2hex(random_bytes(8)),'title'=>$title,'description'=>$description,'image'=>$image,'link'=>$link,'button'=>$button!==''?substr($button,0,60):'HEMEN KEŞFET','sort_order'=>$sort,'active'=>isset($row['active'])?1:0];
+   $slides[]=['id'=>$id!==''?$id:bin2hex(random_bytes(8)),'title'=>$title,'description'=>$description,'image'=>$image,'link'=>$link,'button'=>$button!==''?substr($button,0,60):'HEMEN KEŞFET','sort_order'=>$sort,'position_x'=>max(0,min(100,(int)($row['position_x']??50))),'position_y'=>max(0,min(100,(int)($row['position_y']??50))),'effect'=>in_array(($row['effect']??'fade'),['fade','zoom','slide'],true)?$row['effect']:'fade','active'=>isset($row['active'])?1:0];
   }
   usort($slides,static fn($a,$b)=>($a['sort_order']<=>$b['sort_order'])?:strcmp($a['id'],$b['id']));
   db()->prepare('INSERT INTO settings(setting_key,setting_value) VALUES(?,?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)')->execute(['slider_slides_json',json_encode($slides,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)]);

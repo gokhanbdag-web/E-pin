@@ -98,3 +98,10 @@
  .home-featured .product-image{height:155px}
 }
 @media(prefers-reduced-motion:reduce){.game-slide,.game-slide-image,.game-slide-cta,.home-featured .product{transition:none!important}}
+
+/* Per-slide transition presets */
+.game-slide[data-effect="slide"]{transform:translateX(2.5%);transition:opacity .7s ease,visibility .7s,transform .7s cubic-bezier(.2,.75,.25,1)}
+.game-slide[data-effect="slide"].is-active{transform:translateX(0)}
+.game-slide[data-effect="zoom"] .game-slide-image{transform:scale(1.13);transition:transform 6.8s cubic-bezier(.2,.65,.2,1)}
+.game-slide[data-effect="zoom"].is-active .game-slide-image{transform:scale(1.02)}
+@media(prefers-reduced-motion:reduce){.game-slide[data-effect="slide"],.game-slide[data-effect="zoom"] .game-slide-image{transform:none!important;transition:none!important}}
