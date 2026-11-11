@@ -25,7 +25,7 @@ if(str_starts_with($path,'payment/start/') && $_SERVER['REQUEST_METHOD']==='POST
         if($merchantId===''||$merchantKey===''||$salt==='')throw new RuntimeException('PayTR mağaza bilgileri eksik.');
         $ip=(string)($_SERVER['REMOTE_ADDR']??'127.0.0.1');$basket=[];
         $items=db()->prepare('SELECT product_name,quantity,unit_price,discount_amount FROM order_items WHERE order_id=?');$items->execute([$orderId]);
-        foreach($items->fetchAll() as $it){$qty=max(1,(int)$it['quantity']);$lineNet=max(0,round((float)$it['unit_price']*$qty-(float)$it['discount_amount'],2));$basket[]=[$it['product_name'],number_format($lineNet/$qty,2,'.',''),$qty];}
+        foreach($items->fetchAll() as $it){$qty=max(1,(int)$it['quantity']);$lineNet=max(0,round((float)$it['unit_price']*$qty-(float)$it['discount_amount'],2));$basket[]=[$it['product_name'].' (x'.$qty.')',number_format($lineNet,2,'.',''),1];}
         $basketEncoded=base64_encode(json_encode($basket,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
         $test=payment_secret('paytr_sandbox')==='1'?'1':'0';$noInstallment='1';$maxInstallment='0';$currency='TL';
         $hashStr=$merchantId.$ip.$orderNo.$user['email'].(string)round($amount*100).$basketEncoded.$noInstallment.$maxInstallment.$currency.$test.$user['name'].$address.$phone.$salt;
