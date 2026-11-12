@@ -4,7 +4,8 @@ function app_migrate(PDO $pdo): void
 {
     $dir = __DIR__ . '/database/migrations';
     if (!is_dir($dir)) throw new RuntimeException('Veritabanı migration klasörü bulunamadı.');
-    $lockName = 'epin_schema_' . substr(hash('sha256', (string)config('db_name')), 0, 32);
+    $dbName = (string)($GLOBALS['app_config']['db_name'] ?? '');
+    $lockName = 'epin_schema_' . substr(hash('sha256', $dbName), 0, 32);
     $lock = $pdo->prepare('SELECT GET_LOCK(?, 20)');
     $lock->execute([$lockName]);
     if ((int)$lock->fetchColumn() !== 1) throw new RuntimeException('Veritabanı güncelleme kilidi alınamadı. Biraz sonra tekrar deneyin.');
@@ -16,7 +17,7 @@ function app_migrate(PDO $pdo): void
             $version = basename($file);
             $sql = file_get_contents($file);
             if ($sql === false) throw new RuntimeException('Migration dosyası okunamadı: ' . $version);
-            $mode = (string)config('business_mode', 'single_vendor');
+            $mode = (string)($GLOBALS['app_config']['business_mode'] ?? 'single_vendor');
             if (preg_match('/^-- @mode ([a-z_]+)\s*$/m', $sql, $m) && $m[1] !== $mode) continue;
             $check = $pdo->prepare('SELECT 1 FROM schema_migrations WHERE version=?');
             $check->execute([$version]);
