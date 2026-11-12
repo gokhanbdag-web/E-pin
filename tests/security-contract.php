@@ -11,4 +11,7 @@ if (!str_contains($absolute, "setting_key='site_url'")) throw new RuntimeExcepti
 if (str_contains($absolute, 'HTTP_HOST')) throw new RuntimeException('Absolute callback URLs must not trust the request Host header.');
 if (!str_contains($admin, "'site_url','site_title'")) throw new RuntimeException('Canonical site URL must be editable in store settings.');
 if (!str_contains($view, 'name="site_url"')) throw new RuntimeException('Canonical site URL input is missing.');
-echo "Security contract checks passed.\n";
+$adminSource = file_get_contents($root . '/app/admin.php');
+if (!str_contains($adminSource, 'SELECT o.payment_status,o.status,oi.id,oi.quantity,p.delivery_type FROM orders o')) throw new RuntimeException('Manual delivery must lock and inspect the order status.');
+if (!str_contains($adminSource, "in_array($item['status'],['processing','partially_delivered'],true)")) throw new RuntimeException('Manual delivery must reject refunded, cancelled, expired and review orders.');
+echo "Security contract checks passed.\\n";
