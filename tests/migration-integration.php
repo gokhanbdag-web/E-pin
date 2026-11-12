@@ -72,9 +72,10 @@ $ledger = $partial->prepare("INSERT INTO seller_ledger(seller_id,order_id,entry_
 $ledger->execute([$sellerId, $orderId]);
 $ledger->execute([$sellerId, $orderId]);
 
-$GLOBALS['app_config']['business_mode'] = 'multi_vendor';
+require_once $root . '/app/bootstrap.php';
+$GLOBALS['app_config'] = ['db_host' => $host, 'db_name' => 'epin_partial_test', 'db_user' => $user, 'db_pass' => $pass, 'business_mode' => 'multi_vendor'];
 $failedAsExpected = false;
-try { app_migrate($partial); } catch (RuntimeException $e) {
+try { db(); } catch (RuntimeException $e) {
     $failedAsExpected = str_contains($e->getMessage(), 'mükerrer kayıtlar');
 }
 assert_true($failedAsExpected, 'Migration must stop safely when legacy duplicate ledger entries prevent a unique index.');
@@ -85,10 +86,10 @@ assert_true(has_column($partial, 'products', 'seller_id'), 'Earlier successful D
 $keepId = (int)$partial->query('SELECT MIN(id) FROM seller_ledger')->fetchColumn();
 $delete = $partial->prepare('DELETE FROM seller_ledger WHERE id=?');
 $delete->execute([$keepId]);
-app_migrate($partial);
-assert_true(migration_count($partial) === 3, 'Marketplace migration did not resume after the duplicate was resolved.');
+db();
+assert_true(migration_count($partial) === 3, 'Marketplace migration did not resume after the duplicate was resolved through the application bootstrap.');
 assert_true(has_index($partial, 'seller_ledger', 'uq_seller_ledger_order_entry'), 'Resumed migration did not create the ledger unique index.');
-app_migrate($partial);
-assert_true(migration_count($partial) === 3, 'Repeated resumed migration is not idempotent.');
+db();
+assert_true(migration_count($partial) === 3, 'Repeated resumed migration through the application bootstrap is not idempotent.');
 
 echo "MySQL migration integration checks passed: single-vendor, multi-vendor, idempotency, and interrupted migration recovery.\n";
