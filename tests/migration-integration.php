@@ -132,4 +132,25 @@ assert_true($afterDuplicate['payment_status']==='paid'&&$afterDuplicate['status'
 payment_mark_paid($orderId, 'paytr', 'TEST-PAYMENT-ATTEMPT-3');
 $firstState=$partial->prepare("SELECT status FROM payment_transactions WHERE provider_reference='TEST-PAYMENT-ATTEMPT-3'");$firstState->execute();
 assert_true($firstState->fetchColumn()==='success', 'A repeated callback for the same successful transaction must remain idempotent.');
+// Refund ledger reversals: pending seller credit is cancelled; available credit is debited.
+$partial->prepare("INSERT INTO orders(user_id,order_no,total,status,payment_status) VALUES(?,?,?,?,?)")->execute([$userId,'TEST-REFUND-PENDING',10,'processing','paid']);
+$refundPendingOrder=(int)$partial->lastInsertId();
+$partial->prepare("INSERT INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,?,'sale_credit',10,'pending')")->execute([$sellerId,$refundPendingOrder]);
+$partial->prepare("INSERT INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,?,'platform_commission',-1,'settled')")->execute([$sellerId,$refundPendingOrder]);
+$partial->beginTransaction();seller_reverse_refunded_order($refundPendingOrder);$partial->commit();
+$pendingLedger=$partial->prepare("SELECT entry_type,amount,status FROM seller_ledger WHERE order_id=? ORDER BY entry_type");$pendingLedger->execute([$refundPendingOrder]);$pendingEntries=$pendingLedger->fetchAll(PDO::FETCH_UNIQUE);
+assert_true(($pendingEntries['sale_credit']['status']??'')==='reversed', 'Refund must reverse pending seller credit.');
+assert_true((float)($pendingEntries['commission_reversal']['amount']??0)===1.0, 'Refund must reverse the platform commission.');
+assert_true(!isset($pendingEntries['refund_debit']), 'Pending seller credit must not create an available-balance debit.');
+$partial->prepare("INSERT INTO orders(user_id,order_no,total,status,payment_status) VALUES(?,?,?,?,?)")->execute([$userId,'TEST-REFUND-AVAILABLE',8,'processing','paid']);
+$refundAvailableOrder=(int)$partial->lastInsertId();
+$partial->prepare("INSERT INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,?,'sale_credit',8,'available')")->execute([$sellerId,$refundAvailableOrder]);
+$partial->prepare("INSERT INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,?,'platform_commission',-2,'settled')")->execute([$sellerId,$refundAvailableOrder]);
+$partial->beginTransaction();seller_reverse_refunded_order($refundAvailableOrder);$partial->commit();
+$availableLedger=$partial->prepare("SELECT entry_type,amount,status FROM seller_ledger WHERE order_id=? ORDER BY entry_type");$availableLedger->execute([$refundAvailableOrder]);$availableEntries=$availableLedger->fetchAll(PDO::FETCH_UNIQUE);
+assert_true((float)($availableEntries['refund_debit']['amount']??0)===-8.0&&($availableEntries['refund_debit']['status']??'')==='available', 'Refund must debit already available seller credit.');
+$partial->beginTransaction();seller_reverse_refunded_order($refundAvailableOrder);$partial->commit();
+$reversalCount=$partial->prepare("SELECT COUNT(*) FROM seller_ledger WHERE order_id=? AND entry_type IN ('refund_debit','commission_reversal')");$reversalCount->execute([$refundAvailableOrder]);
+assert_true((int)$reversalCount->fetchColumn()===2, 'Repeated refund processing must not duplicate reversal entries.');
+
 echo "MySQL migration integration checks passed: single-vendor, multi-vendor, idempotency, and interrupted migration recovery.\n";

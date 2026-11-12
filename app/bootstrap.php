@@ -90,6 +90,27 @@ function seller_record_paid_order(int $orderId):void{
   $pdo->commit();
  }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
 }
+function seller_reverse_refunded_order(int $orderId):void{
+ if(config('business_mode')!=='multi_vendor')return;
+ $pdo=db();
+ if(!$pdo->inTransaction())throw new RuntimeException('Satıcı iade muhasebesi sipariş iade işlemiyle aynı veritabanı işleminde yürütülmelidir.');
+ $lock=$pdo->prepare("SELECT id FROM seller_profiles WHERE id IN (SELECT DISTINCT seller_id FROM seller_ledger WHERE order_id=? AND entry_type IN ('sale_credit','platform_commission')) ORDER BY id FOR UPDATE");
+ $lock->execute([$orderId]);
+ $rows=$pdo->prepare("SELECT id,seller_id,entry_type,amount,status FROM seller_ledger WHERE order_id=? AND entry_type IN ('sale_credit','platform_commission') ORDER BY seller_id,id FOR UPDATE");
+ $rows->execute([$orderId]);
+ $debit=$pdo->prepare("INSERT IGNORE INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,?,'refund_debit',?,'available')");
+ $commissionReversal=$pdo->prepare("INSERT IGNORE INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,?,'commission_reversal',?,'settled')");
+ foreach($rows->fetchAll() as $entry){
+  $sellerId=(int)$entry['seller_id'];$amount=(float)$entry['amount'];
+  if($entry['entry_type']==='sale_credit'){
+   if($entry['status']==='pending')$pdo->prepare("UPDATE seller_ledger SET status='reversed' WHERE id=? AND status='pending'")->execute([(int)$entry['id']]);
+   elseif($entry['status']==='available'&&$amount>0)$debit->execute([$sellerId,$orderId,-round($amount,2)]);
+  }elseif($entry['entry_type']==='platform_commission'&&$amount<0){
+   $commissionReversal->execute([$sellerId,$orderId,round(abs($amount),2)]);
+  }
+ }
+}
+
 function inventory_encrypt(string $plain):array{$key=hash('sha256',(string)config('app_key',config('db_pass')),true);$nonce=random_bytes(12);$tag='';$cipher=openssl_encrypt($plain,'aes-256-gcm',$key,OPENSSL_RAW_DATA,$nonce,$tag);if($cipher===false)throw new RuntimeException('Kod şifrelenemedi.');return [base64_encode($cipher),bin2hex($nonce),bin2hex($tag),hash('sha256',$plain)];}
 function inventory_decrypt(array $row):string{$key=hash('sha256',(string)config('app_key',config('db_pass')),true);$plain=openssl_decrypt(base64_decode((string)$row['code_ciphertext'],true),'aes-256-gcm',$key,OPENSSL_RAW_DATA,hex2bin((string)$row['code_nonce']),hex2bin((string)$row['code_tag']));if($plain===false)throw new RuntimeException('Dijital kod çözülemedi.');return $plain;}
 function fulfill_paid_order(int $orderId):void{$pdo=db();$pdo->beginTransaction();try{$st=$pdo->prepare("SELECT id,payment_status,status FROM orders WHERE id=? FOR UPDATE");$st->execute([$orderId]);$order=$st->fetch();if(!$order||$order['payment_status']!=='paid')throw new RuntimeException('Ödeme onayı bulunmayan sipariş teslim edilemez.');if($order['status']==='delivered'){$pdo->commit();return;}$st=$pdo->prepare("SELECT oi.product_id,oi.variant_id,oi.quantity,p.delivery_type FROM order_items oi LEFT JOIN products p ON p.id=oi.product_id WHERE oi.order_id=? ORDER BY oi.id");$st->execute([$orderId]);$hasManual=false;$hasAutomatic=false;foreach($st->fetchAll() as $item){if(($item['delivery_type']??'')!=='automatic'){$hasManual=true;continue;}$hasAutomatic=true;$q=(int)$item['quantity'];$vid=$item['variant_id']!==null?(int)$item['variant_id']:null;$sold=$pdo->prepare("SELECT COUNT(*) FROM inventory_codes WHERE product_id=? AND ((variant_id IS NULL AND ? IS NULL) OR variant_id=?) AND sold_order_id=? AND status='sold'");$sold->execute([(int)$item['product_id'],$vid,$vid,$orderId]);$soldCount=(int)$sold->fetchColumn();$needed=max(0,$q-$soldCount);if($needed===0)continue;$codes=$pdo->prepare("SELECT id FROM inventory_codes WHERE product_id=? AND ((variant_id IS NULL AND ? IS NULL) OR variant_id=?) AND reserved_order_id=? AND status='reserved' ORDER BY id LIMIT ".$needed." FOR UPDATE");$codes->execute([(int)$item['product_id'],$vid,$vid,$orderId]);$ids=$codes->fetchAll(PDO::FETCH_COLUMN);if(count($ids)<$needed)throw new RuntimeException('Ödeme alınmış sipariş için ayrılmış kod stoğu yetersiz.');$upd=$pdo->prepare("UPDATE inventory_codes SET status='sold',sold_order_id=?,reserved_order_id=NULL,reserved_until=NULL WHERE id=? AND status='reserved'");foreach($ids as $id)$upd->execute([$orderId,(int)$id]);}$newStatus=$hasManual?'partially_delivered':($hasAutomatic?'delivered':'processing');$pdo->prepare("UPDATE orders SET status=? WHERE id=?")->execute([$newStatus,$orderId]);$pdo->commit();}catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}}
