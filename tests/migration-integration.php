@@ -92,4 +92,13 @@ assert_true(has_index($partial, 'seller_ledger', 'uq_seller_ledger_order_entry')
 db();
 assert_true(migration_count($partial) === 3, 'Repeated resumed migration through the application bootstrap is not idempotent.');
 
+require_once $root . '/app/backup.php';
+$single->exec("CREATE TABLE backup_probe(id INT AUTO_INCREMENT PRIMARY KEY,sample_text TEXT NOT NULL,payload VARBINARY(16) NOT NULL,optional_value VARCHAR(20) NULL) ENGINE=InnoDB");
+$probe = $single->prepare("INSERT INTO backup_probe(sample_text,payload,optional_value) VALUES(?,?,NULL)");
+$probe->execute(["O'Reilly test", hex2bin('00FF10')]);
+$dump = implode('', iterator_to_array(database_backup_chunks($single), false));
+assert_true(str_contains($dump, 'CREATE TABLE `backup_probe`'), 'Backup must include table structure.');
+assert_true(str_contains($dump, "O\\'Reilly test"), 'Backup must safely quote apostrophes in text data.');
+assert_true(str_contains($dump, '0x00FF10'), 'Backup must preserve binary data as hex literals.');
+assert_true(str_contains($dump, 'SET FOREIGN_KEY_CHECKS=1;'), 'Backup must restore foreign-key checks at the end.');
 echo "MySQL migration integration checks passed: single-vendor, multi-vendor, idempotency, and interrupted migration recovery.\n";

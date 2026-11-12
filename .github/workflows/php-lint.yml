@@ -35,6 +35,8 @@ jobs:
         run: php tests/routing-smoke.php
       - name: Database migration contract tests
         run: php tests/migration-contract.php
+      - name: Database backup contract tests
+        run: php tests/backup-contract.php
       - name: MySQL migration integration tests
         env:
           EPIN_TEST_DB_HOST: 127.0.0.1
