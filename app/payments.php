@@ -91,12 +91,22 @@ function payment_mark_paid(int $orderId,string $provider,string $reference=''):v
     } catch(Throwable $e) { if($pdo->inTransaction())$pdo->rollBack();throw $e; }
     try { fulfill_paid_order($orderId); seller_record_paid_order($orderId); } catch(Throwable $deliveryError) { db()->prepare("UPDATE orders SET status='manual_review' WHERE id=? AND payment_status='paid'")->execute([$orderId]); error_log('Paid order '.$orderId.' requires manual fulfilment: '.$deliveryError->getMessage()); }
 }
-function paytr_callback_valid(array $post):bool {
-    $key=payment_secret('paytr_merchant_key');$salt=payment_secret('paytr_merchant_salt');
+function paytr_signature_matches(array $post,string $key,string $salt):bool {
     if($key===''||$salt==='') return false;
     $raw=(string)($post['merchant_oid']??'').$salt.(string)($post['status']??'').(string)($post['total_amount']??'');
     $expected=base64_encode(hash_hmac('sha256',$raw,$key,true));
     return isset($post['hash'])&&hash_equals($expected,(string)$post['hash']);
+}
+function paytr_callback_valid(array $post):bool {
+    return paytr_signature_matches($post,payment_secret('paytr_merchant_key'),payment_secret('paytr_merchant_salt'));
+}
+function iyzico_checkout_result_valid(array $result,string $orderNo,mixed $total):bool {
+    return ($result['status']??'')==='success'
+        && ($result['paymentStatus']??'')==='SUCCESS'
+        && in_array($result['fraudStatus']??null,[1,'1'],true)
+        && strtoupper((string)($result['currency']??''))==='TRY'
+        && hash_equals($orderNo,(string)($result['conversationId']??''))
+        && payment_amount_matches($result['paidPrice']??null,$total);
 }
 function iyzico_request(string $path,array $payload):array {
     $apiKey=payment_secret('iyzico_api_key');$secret=payment_secret('iyzico_secret_key');
