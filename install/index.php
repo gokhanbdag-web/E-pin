@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 $root=dirname(__DIR__);$configFile=$root.'/config.php';
+define('EPIN_INTERNAL_MIGRATOR', true);
 $docRoot=realpath((string)($_SERVER['DOCUMENT_ROOT']??''));$appRoot=realpath($root);$appBase='';$baseResolved=false;
 if($docRoot!==false&&$appRoot!==false){$docRoot=rtrim(str_replace('\\\\','/',$docRoot),'/');$appRoot=rtrim(str_replace('\\\\','/',$appRoot),'/');if($appRoot===$docRoot){$baseResolved=true;}elseif(str_starts_with($appRoot,$docRoot.'/')){$appBase='/'.trim(substr($appRoot,strlen($docRoot)),'/');$baseResolved=true;}}
 if(!$baseResolved){$appBase=str_replace('\\\\','/',dirname($_SERVER['SCRIPT_NAME']??'/'));$appBase=rtrim($appBase,'/');if(basename($appBase)==='install')$appBase=rtrim(dirname($appBase),'/');if($appBase==='.')$appBase='';}if(is_file($configFile)){header('Location: '.($appBase!==''?$appBase.'/':'/'));exit;}if(session_status()!==PHP_SESSION_ACTIVE){$https=(!empty($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off');session_set_cookie_params(['httponly'=>true,'samesite'=>'Lax','secure'=>$https]);session_start();}if(empty($_SESSION['install_csrf']))$_SESSION['install_csrf']=bin2hex(random_bytes(32));$error='';

@@ -20,3 +20,5 @@ jobs:
           done < <(find . -type f -name '*.php' -not -path './vendor/*' -print0)
       - name: Subdirectory and root routing smoke tests
         run: php tests/routing-smoke.php
+      - name: Database migration contract tests
+        run: php tests/migration-contract.php

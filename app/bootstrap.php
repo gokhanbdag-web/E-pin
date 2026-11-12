@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 define('APP_ROOT',dirname(__DIR__));
+define('EPIN_INTERNAL_MIGRATOR', true);
 $GLOBALS['app_config']=is_file(APP_ROOT.'/config.php')?(require APP_ROOT.'/config.php'):[];
 if(session_status()!==PHP_SESSION_ACTIVE){$secure=(!empty($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off');session_set_cookie_params(['httponly'=>true,'samesite'=>'Lax','secure'=>$secure]);session_start();}
 function config(string $key,mixed $default=null):mixed{return $GLOBALS['app_config'][$key]??$default;}

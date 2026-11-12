@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+if (PHP_SAPI !== 'cli' && !defined('EPIN_INTERNAL_MIGRATOR')) { http_response_code(404); exit; }
 function app_migrate(PDO $pdo): void
 {
     $dir = __DIR__ . '/database/migrations';
