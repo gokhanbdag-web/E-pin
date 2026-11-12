@@ -34,7 +34,8 @@ function app_migrate(PDO $pdo): void
                     if (!app_schema_index_exists($pdo, $m[1], $m[2])) {
                         $columns = explode(',', $m[3]);
                         $group = implode(',', array_map('app_schema_ident', $columns));
-                        $dupes = $pdo->query('SELECT COUNT(*) FROM (SELECT 1 FROM ' . app_schema_ident($m[1]) . ' GROUP BY ' . $group . ' HAVING COUNT(*) > 1) migration_duplicates')->fetchColumn();
+                        $notNull = implode(' AND ', array_map(static fn($column) => app_schema_ident($column) . ' IS NOT NULL', $columns));
+                        $dupes = $pdo->query('SELECT COUNT(*) FROM (SELECT 1 FROM ' . app_schema_ident($m[1]) . ' WHERE ' . $notNull . ' GROUP BY ' . $group . ' HAVING COUNT(*) > 1) migration_duplicates')->fetchColumn();
                         if ((int)$dupes > 0) {
                             throw new RuntimeException('Migration durduruldu: ' . $m[1] . ' tablosunda benzersiz olması gereken alanlarda mükerrer kayıtlar var. Hiçbir kayıt silinmedi; veri güvenliği için destek gereklidir.');
                         }
