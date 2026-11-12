@@ -106,4 +106,17 @@ $partial->prepare("INSERT INTO settings(setting_key,setting_value) VALUES('site_
 $_SERVER['HTTP_HOST'] = 'attacker.example'; $_SERVER['HTTPS'] = 'off';
 $callbackUrl = absolute_url('payment/iyzico-callback');
 assert_true($callbackUrl === 'https://shop.example.test/subdir/payment/iyzico-callback', 'Payment callback URL must ignore untrusted Host headers and preserve the configured subdirectory.');
+require_once $root . '/app/payments.php';
+payment_attempt_reserve($orderId, 'paytr', 10.00, 'TEST-PAYMENT-ATTEMPT-1');
+$blockedDuplicate = false;
+try { payment_attempt_reserve($orderId, 'iyzico', 10.00, 'TEST-PAYMENT-ATTEMPT-2'); } catch (RuntimeException $e) {
+    $blockedDuplicate = str_contains($e->getMessage(), 'bekleyen bir ödeme oturumu');
+}
+assert_true($blockedDuplicate, 'A second provider session must not be created while a payment attempt is pending.');
+payment_attempt_fail($orderId, 'paytr', 'TEST-PAYMENT-ATTEMPT-1');
+payment_attempt_reserve($orderId, 'iyzico', 10.00, 'TEST-PAYMENT-ATTEMPT-2');
+$partial->exec("UPDATE payment_transactions SET created_at=DATE_SUB(NOW(),INTERVAL 31 MINUTE) WHERE provider_reference='TEST-PAYMENT-ATTEMPT-2'");
+payment_attempt_reserve($orderId, 'paytr', 10.00, 'TEST-PAYMENT-ATTEMPT-3');
+$attemptStates = $partial->query("SELECT provider_reference,status FROM payment_transactions WHERE order_id={$orderId} ORDER BY id")->fetchAll(PDO::FETCH_KEY_PAIR);
+assert_true(($attemptStates['TEST-PAYMENT-ATTEMPT-2']??'')==='expired'&&($attemptStates['TEST-PAYMENT-ATTEMPT-3']??'')==='pending', 'Expired payment attempts must release the order for a new session.');
 echo "MySQL migration integration checks passed: single-vendor, multi-vendor, idempotency, and interrupted migration recovery.\n";

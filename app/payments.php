@@ -52,6 +52,31 @@ function cancel_unpaid_order(int $orderId,?int $ownerId=null):void {
         $pdo->commit();
     } catch(Throwable $e) {if($pdo->inTransaction())$pdo->rollBack();throw $e;}
 }
+function payment_attempt_reserve(int $orderId,string $provider,float $amount,string $reference):void {
+    if(!in_array($provider,['paytr','iyzico'],true)||$reference==='') throw new RuntimeException('Geçersiz ödeme denemesi.');
+    $pdo=db();$pdo->beginTransaction();
+    try {
+        $q=$pdo->prepare('SELECT payment_status,status FROM orders WHERE id=? FOR UPDATE');
+        $q->execute([$orderId]);$order=$q->fetch();
+        if(!$order||$order['payment_status']==='paid'||!in_array($order['status'],['pending','payment_failed'],true)) throw new RuntimeException('Sipariş yeni bir ödemeye uygun değil.');
+        $pdo->prepare("UPDATE payment_transactions SET status='expired' WHERE order_id=? AND status='pending' AND created_at<DATE_SUB(NOW(),INTERVAL 30 MINUTE)")->execute([$orderId]);
+        $q=$pdo->prepare("SELECT id FROM payment_transactions WHERE order_id=? AND status='pending' LIMIT 1 FOR UPDATE");
+        $q->execute([$orderId]);
+        if($q->fetchColumn()) throw new RuntimeException('Bu sipariş için zaten bekleyen bir ödeme oturumu var. Önceki ödeme denemesinin sonuçlanmasını bekleyin.');
+        $pdo->prepare("INSERT INTO payment_transactions(order_id,provider,provider_reference,amount,status) VALUES(?,?,?,?, 'pending')")->execute([$orderId,$provider,$reference,$amount]);
+        $pdo->commit();
+    } catch(Throwable $e) {if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+}
+function payment_attempt_update_reference(int $orderId,string $provider,string $oldReference,string $newReference):void {
+    if($newReference==='') throw new RuntimeException('Ödeme sağlayıcısı geçersiz işlem referansı döndürdü.');
+    $q=db()->prepare("UPDATE payment_transactions SET provider_reference=? WHERE order_id=? AND provider=? AND provider_reference=? AND status='pending'");
+    $q->execute([$newReference,$orderId,$provider,$oldReference]);
+    if($q->rowCount()!==1) throw new RuntimeException('Ödeme oturumu işlem kaydı güncellenemedi.');
+}
+function payment_attempt_fail(int $orderId,string $provider,string $reference):void {
+    if($reference==='') return;
+    db()->prepare("UPDATE payment_transactions SET status='failed' WHERE order_id=? AND provider=? AND provider_reference=? AND status='pending'")->execute([$orderId,$provider,$reference]);
+}
 function payment_mark_paid(int $orderId,string $provider,string $reference=''):void {
     $pdo=db();$pdo->beginTransaction();
     try {
