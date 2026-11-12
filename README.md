@@ -13,7 +13,9 @@ Native PHP + MySQL digital gaming product storefront and marketplace. The applic
 - Safe unpaid order cancellation and late-payment manual review.
 - Customer refund requests and admin review/recording workflow.
 - Multi Vendor seller applications, seller products/orders, commissions, ledger and withdrawal requests.
-- PHP syntax check workflow.
+- Admin-only streamed SQL database export; dump files are not retained on the web server.
+- Canonical site URL setting for payment callback generation, independent of request Host headers.
+- PHP syntax, routing, security, backup and MySQL integration test workflows.
 
 ## Requirements
 - PHP 8.1+ (PHP 8.2+ recommended).
@@ -35,7 +37,7 @@ The installer needs permission to create `config.php` and the `storage` director
 PayTR / iyzico flows are implemented at application level, including callback verification and amount checks, but they must still be tested with merchant sandbox credentials before production use. Refund requests are currently an internal workflow: an administrator records completion only after the refund has actually been completed in the provider dashboard. Direct refund API automation is not yet implemented.
 
 ## Verification limits
-GitHub Actions runs PHP syntax checks. They do not replace installation tests on real shared hosting, database integration tests, security testing, or live/sandbox payment tests. Do not treat the repository as production-certified until those checks have been completed.
+GitHub Actions checks PHP syntax, root/subdirectory routing, migration contracts, MySQL 8 migration and retry behavior, backup serialization, and canonical callback URL handling. These automated tests do not replace installation tests on real shared hosting, review of a restored backup, independent security testing, or live/sandbox payment-provider tests. The admin backup downloads database tables only; uploaded media and `config.php` must be backed up separately. It is a manual export, not a scheduled off-site backup. Do not treat the repository as production-certified until real-hosting and payment-provider checks have been completed.
 
 
 ## Discount coupons
