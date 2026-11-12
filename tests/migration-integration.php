@@ -66,6 +66,7 @@ $partial->exec("INSERT INTO users(name,email,password_hash,role) VALUES('Test Se
 $userId = (int)$partial->lastInsertId();
 $partial->prepare("INSERT INTO orders(user_id,order_no) VALUES(?,?)")->execute([$userId, 'TEST-ORDER-1']);
 $orderId = (int)$partial->lastInsertId();
+$partial->prepare('UPDATE orders SET total=10.00 WHERE id=?')->execute([$orderId]);
 $partial->prepare("INSERT INTO seller_profiles(user_id,shop_name,shop_slug) VALUES(?,?,?)")->execute([$userId, 'Test Shop', 'test-shop']);
 $sellerId = (int)$partial->lastInsertId();
 $ledger = $partial->prepare("INSERT INTO seller_ledger(seller_id,order_id,entry_type,amount) VALUES(?,?,'sale_credit',10)");

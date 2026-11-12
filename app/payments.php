@@ -83,9 +83,10 @@ function payment_mark_paid(int $orderId,string $provider,string $reference=''):v
     try {
         $q=$pdo->prepare('SELECT id,payment_status,status,coupon_code,coupon_usage_released FROM orders WHERE id=? FOR UPDATE');$q->execute([$orderId]);$o=$q->fetch();
         if(!$o) throw new RuntimeException('Sipariş bulunamadı.');
-        $q=$pdo->prepare('SELECT id,status FROM payment_transactions WHERE order_id=? AND provider=? AND provider_reference=? LIMIT 1 FOR UPDATE');
+        $q=$pdo->prepare('SELECT id,status,amount FROM payment_transactions WHERE order_id=? AND provider=? AND provider_reference=? LIMIT 1 FOR UPDATE');
         $q->execute([$orderId,$provider,$reference]);$attempt=$q->fetch();
         if(!$attempt)throw new RuntimeException('Ödeme denemesi siparişle eşleştirilemedi.');
+        if(!payment_amount_matches($attempt['amount'],$o['total']))throw new RuntimeException('Ödeme denemesi tutarı sipariş tutarıyla eşleşmiyor.');
         if($attempt['status']==='success'){$pdo->commit();return;}
         if($o['status']==='refunded'){
             $pdo->prepare("UPDATE payment_transactions SET status='late_payment_review' WHERE id=?")->execute([(int)$attempt['id']]);
