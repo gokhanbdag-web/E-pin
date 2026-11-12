@@ -119,4 +119,16 @@ $partial->exec("UPDATE payment_transactions SET created_at=DATE_SUB(NOW(),INTERV
 payment_attempt_reserve($orderId, 'paytr', 10.00, 'TEST-PAYMENT-ATTEMPT-3');
 $attemptStates = $partial->query("SELECT provider_reference,status FROM payment_transactions WHERE order_id={$orderId} ORDER BY id")->fetchAll(PDO::FETCH_KEY_PAIR);
 assert_true(($attemptStates['TEST-PAYMENT-ATTEMPT-2']??'')==='expired'&&($attemptStates['TEST-PAYMENT-ATTEMPT-3']??'')==='pending', 'Expired payment attempts must release the order for a new session.');
+payment_mark_paid($orderId, 'paytr', 'TEST-PAYMENT-ATTEMPT-3');
+$paidOrder = $partial->prepare('SELECT payment_status,status FROM orders WHERE id=?');$paidOrder->execute([$orderId]);$paidState=$paidOrder->fetch(PDO::FETCH_ASSOC);
+assert_true($paidState['payment_status']==='paid', 'The first verified payment must mark the order paid.');
+$partial->prepare("INSERT INTO payment_transactions(order_id,provider,provider_reference,amount,status) VALUES(?, 'iyzico','TEST-DUPLICATE-CHARGE',10,'pending')")->execute([$orderId]);
+payment_mark_paid($orderId, 'iyzico', 'TEST-DUPLICATE-CHARGE');
+$duplicateState=$partial->prepare("SELECT status FROM payment_transactions WHERE provider_reference='TEST-DUPLICATE-CHARGE'");$duplicateState->execute();
+assert_true($duplicateState->fetchColumn()==='duplicate_payment', 'A second provider charge must be flagged for manual refund reconciliation.');
+$paidOrder->execute([$orderId]);$afterDuplicate=$paidOrder->fetch(PDO::FETCH_ASSOC);
+assert_true($afterDuplicate['payment_status']==='paid'&&$afterDuplicate['status']==='processing', 'A duplicate callback must not reset or re-fulfil the already-paid order.');
+payment_mark_paid($orderId, 'paytr', 'TEST-PAYMENT-ATTEMPT-3');
+$firstState=$partial->prepare("SELECT status FROM payment_transactions WHERE provider_reference='TEST-PAYMENT-ATTEMPT-3'");$firstState->execute();
+assert_true($firstState->fetchColumn()==='success', 'A repeated callback for the same successful transaction must remain idempotent.');
 echo "MySQL migration integration checks passed: single-vendor, multi-vendor, idempotency, and interrupted migration recovery.\n";
