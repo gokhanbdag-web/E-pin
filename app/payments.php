@@ -81,7 +81,7 @@ function payment_mark_paid(int $orderId,string $provider,string $reference=''):v
     $pdo=db();$shouldFulfill=false;$reviewReason='';
     $pdo->beginTransaction();
     try {
-        $q=$pdo->prepare('SELECT id,payment_status,status,coupon_code,coupon_usage_released FROM orders WHERE id=? FOR UPDATE');$q->execute([$orderId]);$o=$q->fetch();
+        $q=$pdo->prepare('SELECT id,payment_status,status,coupon_code,coupon_usage_released,total FROM orders WHERE id=? FOR UPDATE');$q->execute([$orderId]);$o=$q->fetch();
         if(!$o) throw new RuntimeException('Sipariş bulunamadı.');
         $q=$pdo->prepare('SELECT id,status,amount FROM payment_transactions WHERE order_id=? AND provider=? AND provider_reference=? LIMIT 1 FOR UPDATE');
         $q->execute([$orderId,$provider,$reference]);$attempt=$q->fetch();
