@@ -11,9 +11,13 @@ $meta=[
 'menus'=>['title'=>'Menüler','table'=>'menus','fields'=>['title'=>'Menü başlığı','url'=>'Bağlantı','location'=>'Konum','sort_order'=>'Sıralama','status'=>'Durum']]
 ];
 if(config('business_mode')!=='multi_vendor'&&$resource==='sellers')$resource='overview';
-if(!isset($meta[$resource])&&!in_array($resource,['overview','reports','settings','slider','inventory','payments','orders','refunds','tickets','sellers','seller_payments','demo'],true))$resource='overview';
+if(!isset($meta[$resource])&&!in_array($resource,['overview','reports','settings','slider','inventory','payments','orders','refunds','tickets','sellers','seller_payments','demo','backup'],true))$resource='overview';
 if($_SERVER['REQUEST_METHOD']==='POST'){csrf_check();$action=(string)($_POST['action']??'');try{
- if($resource==='sellers'&&config('business_mode')==='multi_vendor'&&$action==='review'){
+ if($resource==='backup'&&$action==='export'){
+ require_once APP_ROOT.'/app/backup.php';
+ stream_database_backup(db());
+}
+if($resource==='sellers'&&config('business_mode')==='multi_vendor'&&$action==='review'){
  $id=(int)($_POST['id']??0);$decision=(string)($_POST['decision']??'');
  if(!in_array($decision,['approved','rejected'],true))throw new RuntimeException('Geçersiz başvuru kararı.');
  $pdo=db();$pdo->beginTransaction();
