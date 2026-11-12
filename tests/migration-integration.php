@@ -128,7 +128,7 @@ payment_mark_paid($orderId, 'iyzico', 'TEST-DUPLICATE-CHARGE');
 $duplicateState=$partial->prepare("SELECT status FROM payment_transactions WHERE provider_reference='TEST-DUPLICATE-CHARGE'");$duplicateState->execute();
 assert_true($duplicateState->fetchColumn()==='duplicate_payment', 'A second provider charge must be flagged for manual refund reconciliation.');
 $paidOrder->execute([$orderId]);$afterDuplicate=$paidOrder->fetch(PDO::FETCH_ASSOC);
-assert_true($afterDuplicate['payment_status']==='paid'&&$afterDuplicate['status']==='processing', 'A duplicate callback must not reset or re-fulfil the already-paid order.');
+assert_true($afterDuplicate['payment_status']==='paid'&&$afterDuplicate['status']==='manual_review', 'A duplicate callback must preserve paid status and flag the order for manual reconciliation without re-fulfilment.');
 payment_mark_paid($orderId, 'paytr', 'TEST-PAYMENT-ATTEMPT-3');
 $firstState=$partial->prepare("SELECT status FROM payment_transactions WHERE provider_reference='TEST-PAYMENT-ATTEMPT-3'");$firstState->execute();
 assert_true($firstState->fetchColumn()==='success', 'A repeated callback for the same successful transaction must remain idempotent.');
