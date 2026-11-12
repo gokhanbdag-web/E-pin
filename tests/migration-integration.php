@@ -99,7 +99,7 @@ $probe->execute(["O'Reilly test", hex2bin('00FF10')]);
 $dump = implode('', iterator_to_array(database_backup_chunks($single), false));
 assert_true(str_contains($dump, 'CREATE TABLE `backup_probe`'), 'Backup must include table structure.');
 assert_true(str_contains($dump, "O\\'Reilly test"), 'Backup must safely quote apostrophes in text data.');
-assert_true(str_contains($dump, '0x00FF10'), 'Backup must preserve binary data as hex literals.');
+assert_true(str_contains($dump, '0x00ff10'), 'Backup must preserve binary data as hex literals.');
 assert_true(str_contains($dump, 'SET FOREIGN_KEY_CHECKS=1;'), 'Backup must restore foreign-key checks at the end.');
 // Payment callback URLs use the saved canonical origin, never the request Host header.
 $partial->prepare("INSERT INTO settings(setting_key,setting_value) VALUES('site_url',?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)")->execute(['https://shop.example.test/subdir']);
