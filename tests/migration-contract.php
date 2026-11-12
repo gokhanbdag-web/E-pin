@@ -28,6 +28,20 @@ $required = [
 ];
 foreach ($required as $needle) if (!str_contains($all, $needle)) throw new RuntimeException('Missing migration contract: ' . $needle);
 if (!str_contains(file_get_contents($files[2]), '-- @mode multi_vendor')) throw new RuntimeException('Marketplace migration must be restricted to multi-vendor mode.');
+foreach ($files as $file) {
+    $buffer = '';
+    foreach (preg_split('/\\R/', (string)file_get_contents($file)) ?: [] as $line) {
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '--')) {
+            if (str_starts_with($line, '-- @') && $buffer !== '') throw new RuntimeException('Every SQL statement must end with a semicolon before a migration directive: ' . basename($file));
+            continue;
+        }
+        $buffer .= $line . "\n";
+        if (str_ends_with($line, ';')) $buffer = '';
+    }
+    if (trim($buffer) !== '') throw new RuntimeException('Unterminated SQL statement in migration: ' . basename($file));
+}
+
 if (preg_match('/^\s*DELETE\s+/mi', $all)) throw new RuntimeException('Migrations must not silently delete customer data.');
 $migrator = file_get_contents($root . '/migrator.php');
 foreach (['GET_LOCK','RELEASE_LOCK','schema_migrations','information_schema.COLUMNS','information_schema.STATISTICS','information_schema.REFERENTIAL_CONSTRAINTS'] as $needle) {
