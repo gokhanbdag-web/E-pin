@@ -54,3 +54,8 @@ GitHub Actions runs PHP syntax checks. They do not replace installation tests on
 - Her varyantın SKU kodu, bağımsız fiyatı, yayın durumu ve sıralaması bulunur. Ürün sayfasında seçenek seçimi yapılır; varyant fiyatı sepete ve sipariş kalemine aktarılır. Otomatik e-pin kodları varyant bazında yüklenir, rezerve edilir ve ödeme doğrulamasından sonra teslim edilir.
 
 - Stok yönetimi ekranında ana ürün veya seçilen varyant için şifreli dijital kod içe aktarımı ve stok sayımı yapılabilir.
+
+
+## Canonical site URL and payment callbacks
+- After installation, open Admin → Store Settings and enter the full canonical URL, including the subdirectory if the app is installed below the domain root (for example `https://example.com/shop`).
+- Payment callback URLs are generated only from this saved value; untrusted request `Host` headers are not used. HTTPS is recommended for all production payment traffic.

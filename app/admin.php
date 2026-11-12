@@ -152,7 +152,13 @@ elseif($resource==='inventory'&&$action==='import_codes'){$productId=(int)($_POS
   usort($slides,static fn($a,$b)=>($a['sort_order']<=>$b['sort_order'])?:strcmp($a['id'],$b['id']));
   db()->prepare('INSERT INTO settings(setting_key,setting_value) VALUES(?,?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)')->execute(['slider_slides_json',json_encode($slides,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR)]);
   flash('success','Slider vitrin kayıtları kaydedildi.');
- } elseif($resource==='settings'&&$action==='save'){$st=db()->prepare('INSERT INTO settings(setting_key,setting_value) VALUES(?,?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)');foreach(['site_title','home_heading','home_description','footer_text'] as $k)$st->execute([$k,trim((string)($_POST[$k]??''))]);flash('success','Mağaza ayarları kaydedildi.');}
+ } elseif($resource==='settings'&&$action==='save'){
+ $siteUrl=rtrim(trim((string)($_POST['site_url']??'')),'/');$parts=parse_url($siteUrl);
+ if(!$parts||!isset($parts['scheme'],$parts['host'])||!in_array(strtolower($parts['scheme']),['https','http'],true)||isset($parts['user'])||isset($parts['pass'])||isset($parts['query'])||isset($parts['fragment'])||filter_var($siteUrl,FILTER_VALIDATE_URL)===false)throw new RuntimeException('Geçerli Site adresini https://alanadiniz.com biçiminde girin; alt klasör kullanıyorsanız sonuna ekleyin.');
+ $st=db()->prepare('INSERT INTO settings(setting_key,setting_value) VALUES(?,?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)');
+ foreach(['site_url','site_title','home_heading','home_description','footer_text'] as $k)$st->execute([$k,$k==='site_url'?$siteUrl:trim((string)($_POST[$k]??''))]);
+ flash('success','Mağaza ayarları kaydedildi.');
+}
  elseif(isset($meta[$resource])&&$action==='save'){$m=$meta[$resource];$id=(int)($_POST['id']??0);$data=[];$uploadedImage=null;
 if($resource==='products'&&!empty($_FILES['image_file'])&&($_FILES['image_file']['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_NO_FILE){
 $file=$_FILES['image_file'];if(($file['error']??UPLOAD_ERR_OK)!==UPLOAD_ERR_OK)throw new RuntimeException('Görsel yüklenirken hata oluştu.');

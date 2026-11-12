@@ -101,4 +101,9 @@ assert_true(str_contains($dump, 'CREATE TABLE `backup_probe`'), 'Backup must inc
 assert_true(str_contains($dump, "O\\'Reilly test"), 'Backup must safely quote apostrophes in text data.');
 assert_true(str_contains($dump, '0x00FF10'), 'Backup must preserve binary data as hex literals.');
 assert_true(str_contains($dump, 'SET FOREIGN_KEY_CHECKS=1;'), 'Backup must restore foreign-key checks at the end.');
+// Payment callback URLs use the saved canonical origin, never the request Host header.
+$partial->prepare("INSERT INTO settings(setting_key,setting_value) VALUES('site_url',?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)")->execute(['https://shop.example.test/subdir']);
+$_SERVER['HTTP_HOST'] = 'attacker.example'; $_SERVER['HTTPS'] = 'off';
+$callbackUrl = absolute_url('payment/iyzico-callback');
+assert_true($callbackUrl === 'https://shop.example.test/subdir/payment/iyzico-callback', 'Payment callback URL must ignore untrusted Host headers and preserve the configured subdirectory.');
 echo "MySQL migration integration checks passed: single-vendor, multi-vendor, idempotency, and interrupted migration recovery.\n";

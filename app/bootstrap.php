@@ -57,7 +57,15 @@ function app_route_path_from_uri(string $requestUri,string $basePath):string{
 }
 function base_url():string{return app_base_path();}
 function url(string $path=''):string{return base_url().'/'.ltrim($path,'/');}
-function absolute_url(string $path=''):string{$host=(string)($_SERVER['HTTP_HOST']??$_SERVER['SERVER_NAME']??'');if(!preg_match('/^[a-z0-9.-]+(?::[0-9]{1,5})?$/i',$host))throw new RuntimeException('Geçerli site alan adı belirlenemedi.');$https=(!empty($_SERVER['HTTPS'])&&$_SERVER['HTTPS']!=='off')||((int)($_SERVER['SERVER_PORT']??0)===443);return ($https?'https':'http').'://'.$host.url($path);}
+function absolute_url(string $path=''):string{
+ $q=db()->prepare("SELECT setting_value FROM settings WHERE setting_key='site_url' LIMIT 1");$q->execute();$base=rtrim(trim((string)$q->fetchColumn()),'/');$parts=parse_url($base);
+ if(!$parts||!isset($parts['scheme'],$parts['host'])||!in_array(strtolower($parts['scheme']),['https','http'],true)||isset($parts['user'])||isset($parts['pass'])||isset($parts['query'])||isset($parts['fragment'])||filter_var($base,FILTER_VALIDATE_URL)===false)throw new RuntimeException('Ödeme bağlantıları için Mağaza ayarlarında geçerli Site adresini tanımlayın.');
+ $host=(string)$parts['host'];$validHost=preg_match('/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\.(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?))*$/i',$host)||filter_var($host,FILTER_VALIDATE_IP)!==false;
+ if(!$validHost)throw new RuntimeException('Site adresindeki alan adı geçersiz.');
+ foreach(explode('/',(string)($parts['path']??'')) as $segment)if($segment==='..')throw new RuntimeException('Site adresinde geçersiz alt dizin yolu var.');
+ $route=ltrim($path,'/');if(str_contains($route,"\r")||str_contains($route,"\n")||preg_match('~(^|/)\.\.(/|$)~',$route))throw new RuntimeException('Geçersiz callback yolu.');
+ return $base.'/'.$route;
+}
 function e(mixed $v):string{return htmlspecialchars((string)$v,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');}
 function redirect(string $to):never{header('Location: '.$to);exit;}
 function csrf_token():string{if(empty($_SESSION['_token']))$_SESSION['_token']=bin2hex(random_bytes(32));return $_SESSION['_token'];}
