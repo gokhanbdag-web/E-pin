@@ -32,10 +32,14 @@ function app_migrate(PDO $pdo): void
                 }
                 if (preg_match('/^-- @unique-index ([a-zA-Z0-9_]+) ([a-zA-Z0-9_]+) ([a-zA-Z0-9_,]+)$/', $line, $m)) {
                     if (!app_schema_index_exists($pdo, $m[1], $m[2])) {
-                        if ($m[1] === 'payment_transactions') $pdo->exec('DELETE a FROM payment_transactions a INNER JOIN payment_transactions b ON a.provider=b.provider AND a.provider_reference=b.provider_reference AND a.id>b.id WHERE a.provider_reference IS NOT NULL');
-                        if ($m[1] === 'seller_ledger') $pdo->exec('DELETE a FROM seller_ledger a INNER JOIN seller_ledger b ON a.seller_id=b.seller_id AND a.order_id=b.order_id AND a.entry_type=b.entry_type AND a.id>b.id WHERE a.order_id IS NOT NULL');
-                        $columns = implode(',', array_map('app_schema_ident', explode(',', $m[3])));
-                        $pdo->exec('ALTER TABLE ' . app_schema_ident($m[1]) . ' ADD UNIQUE KEY ' . app_schema_ident($m[2]) . '(' . $columns . ')');
+                        $columns = explode(',', $m[3]);
+                        $group = implode(',', array_map('app_schema_ident', $columns));
+                        $dupes = $pdo->query('SELECT COUNT(*) FROM (SELECT 1 FROM ' . app_schema_ident($m[1]) . ' GROUP BY ' . $group . ' HAVING COUNT(*) > 1) migration_duplicates')->fetchColumn();
+                        if ((int)$dupes > 0) {
+                            throw new RuntimeException('Migration durduruldu: ' . $m[1] . ' tablosunda benzersiz olması gereken alanlarda mükerrer kayıtlar var. Hiçbir kayıt silinmedi; veri güvenliği için destek gereklidir.');
+                        }
+                        $quotedColumns = implode(',', array_map('app_schema_ident', $columns));
+                        $pdo->exec('ALTER TABLE ' . app_schema_ident($m[1]) . ' ADD UNIQUE KEY ' . app_schema_ident($m[2]) . '(' . $quotedColumns . ')');
                     }
                     continue;
                 }
