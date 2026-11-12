@@ -14,5 +14,5 @@ if (!str_contains($view, 'name="site_url"')) throw new RuntimeException('Canonic
 $adminSource = file_get_contents($root . '/app/admin.php');
 if (!str_contains($adminSource, 'SELECT o.payment_status,o.status,oi.id,oi.quantity,p.delivery_type FROM orders o')) throw new RuntimeException('Manual delivery must lock and inspect the order status.');
 if (!str_contains($adminSource, "in_array(" . '$item' . "['status'],['processing','partially_delivered'],true)")) throw new RuntimeException('Manual delivery must reject refunded, cancelled, expired and review orders.');
-if (!str_contains($admin, "seller_reverse_refunded_order((int)$r['order_id'])")) throw new RuntimeException('Processed refunds must reverse seller ledger entries in the same transaction.');
+if (!str_contains($admin, 'seller_reverse_refunded_order((int)$r[\'order_id\'])')) throw new RuntimeException('Processed refunds must reverse seller ledger entries in the same transaction.');
 echo "Security contract checks passed.\n";
