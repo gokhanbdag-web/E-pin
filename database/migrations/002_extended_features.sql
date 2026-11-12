@@ -11,4 +11,5 @@ CREATE TABLE IF NOT EXISTS support_tickets(id BIGINT UNSIGNED AUTO_INCREMENT PRI
 -- @add-column orders discount_total DECIMAL(12,2) NOT NULL DEFAULT 0.00
 -- @add-column orders coupon_usage_released TINYINT(1) NOT NULL DEFAULT 0
 -- @add-column order_items discount_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00
+UPDATE orders SET coupon_usage_released=1 WHERE status IN ('expired','cancelled') AND coupon_usage_released=0
 -- @unique-index payment_transactions uq_payment_provider_reference provider,provider_reference

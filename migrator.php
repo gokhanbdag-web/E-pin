@@ -30,6 +30,14 @@ function app_migrate(PDO $pdo): void
                     if (!app_schema_column_exists($pdo, $m[1], $m[2])) $pdo->exec('ALTER TABLE ' . app_schema_ident($m[1]) . ' ADD ' . app_schema_ident($m[2]) . ' ' . $m[3]);
                     continue;
                 }
+                if (preg_match('/^-- @add-foreign-key ([a-zA-Z0-9_]+) ([a-zA-Z0-9_]+) ([a-zA-Z0-9_]+) ([a-zA-Z0-9_]+) ([a-zA-Z0-9_]+) ([A-Z]+)$/', $line, $m)) {
+                    $check = $pdo->prepare('SELECT 1 FROM information_schema.REFERENTIAL_CONSTRAINTS WHERE CONSTRAINT_SCHEMA=DATABASE() AND TABLE_NAME=? AND CONSTRAINT_NAME=?');
+                    $check->execute([$m[1], $m[2]]);
+                    if (!$check->fetchColumn()) {
+                        $pdo->exec('ALTER TABLE ' . app_schema_ident($m[1]) . ' ADD CONSTRAINT ' . app_schema_ident($m[2]) . ' FOREIGN KEY (' . app_schema_ident($m[3]) . ') REFERENCES ' . app_schema_ident($m[4]) . '(' . app_schema_ident($m[5]) . ') ON DELETE ' . $m[6]);
+                    }
+                    continue;
+                }
                 if (preg_match('/^-- @unique-index ([a-zA-Z0-9_]+) ([a-zA-Z0-9_]+) ([a-zA-Z0-9_,]+)$/', $line, $m)) {
                     if (!app_schema_index_exists($pdo, $m[1], $m[2])) {
                         $columns = explode(',', $m[3]);
