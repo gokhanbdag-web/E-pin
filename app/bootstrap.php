@@ -92,8 +92,8 @@ function seller_record_paid_order(int $orderId):void{
   $credit=$pdo->prepare("INSERT IGNORE INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,?,'sale_credit',?,?)");
   $fee=$pdo->prepare("INSERT IGNORE INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,?,'platform_commission',?,'settled')");
   foreach($groups as $sid=>$v){$credit->execute([(int)$sid,$orderId,round($v['net'],2),$creditStatus]);$fee->execute([(int)$sid,$orderId,-round($v['commission'],2)]);if($creditStatus==='available')$pdo->prepare("UPDATE seller_ledger SET status='available' WHERE order_id=? AND seller_id=? AND entry_type='sale_credit' AND status='pending'")->execute([$orderId,(int)$sid]);}
-  $pdo->commit();
- }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+  if($ownsTransaction)$pdo->commit();
+ }catch(Throwable $e){if($ownsTransaction&&$pdo->inTransaction())$pdo->rollBack();throw $e;}
 }
 function seller_reverse_refunded_order(int $orderId):void{
  if(config('business_mode')!=='multi_vendor')return;
