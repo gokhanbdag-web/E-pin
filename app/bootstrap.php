@@ -116,6 +116,23 @@ function seller_reverse_refunded_order(int $orderId):void{
  }
 }
 
+function seller_request_withdrawal(int $sellerId,float $amount,string $note=''):int{
+ if($sellerId<1)throw new InvalidArgumentException('Geçersiz satıcı hesabı.');
+ if(!is_finite($amount))throw new RuntimeException('Geçerli tutar girin.');
+ $amount=round($amount,2);
+ if($amount<=0)throw new RuntimeException('Geçerli tutar girin.');
+ $pdo=db();$ownsTransaction=!$pdo->inTransaction();if($ownsTransaction)$pdo->beginTransaction();
+ try{
+  $lock=$pdo->prepare('SELECT id FROM seller_profiles WHERE id=? FOR UPDATE');$lock->execute([$sellerId]);
+  if(!$lock->fetchColumn())throw new RuntimeException('Satıcı hesabı bulunamadı.');
+  $q=$pdo->prepare("SELECT COALESCE(SUM(amount),0) FROM seller_ledger WHERE seller_id=? AND status='available'");$q->execute([$sellerId]);$balance=(float)$q->fetchColumn();
+  $q=$pdo->prepare("SELECT COALESCE(SUM(amount),0) FROM seller_withdrawals WHERE seller_id=? AND status IN ('pending','approved')");$q->execute([$sellerId]);$reserved=(float)$q->fetchColumn();
+  if($amount>max(0,$balance-$reserved))throw new RuntimeException('Kullanılabilir bakiyeniz yetersiz.');
+  $insert=$pdo->prepare('INSERT INTO seller_withdrawals(seller_id,amount,note) VALUES(?,?,?)');$insert->execute([$sellerId,number_format($amount,2,'.',''),substr(trim($note),0,500)]);
+  $id=(int)$pdo->lastInsertId();if($ownsTransaction)$pdo->commit();return $id;
+ }catch(Throwable $e){if($ownsTransaction&&$pdo->inTransaction())$pdo->rollBack();throw $e;}
+}
+
 function seller_financial_summary(int $sellerId):array{
  if($sellerId<1)throw new InvalidArgumentException('Geçersiz satıcı hesabı.');
  $pdo=db();

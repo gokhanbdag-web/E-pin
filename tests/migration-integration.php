@@ -126,6 +126,20 @@ assert_true(abs(($afterFinance['withdrawnTotal']-$beforeFinance['withdrawnTotal'
 assert_true(abs(($afterFinance['refundedTotal']-$beforeFinance['refundedTotal'])-20)<0.001,'Refund debits must be shown as positive refunded totals.');
 assert_true(abs(($afterFinance['commissionNet']-$beforeFinance['commissionNet'])-(-3))<0.001,'Commission reversals must offset platform commission.');
 
+// Withdrawal request creation serializes on the seller row and includes existing reservations.
+$withdrawalCapacity=seller_financial_summary($sellerId)['availableBalance'];
+assert_true($withdrawalCapacity>=1,'Test seller must have funds available for withdrawal reservation checks.');
+$firstRequest=seller_request_withdrawal($sellerId,$withdrawalCapacity);
+assert_true($firstRequest>0,'A valid withdrawal request should be created.');
+$overspendRejected=false;
+try{seller_request_withdrawal($sellerId,0.01);}catch(RuntimeException $e){$overspendRejected=str_contains($e->getMessage(),'yetersiz');}
+assert_true($overspendRejected,'A second withdrawal request must not reserve funds already committed by a pending request.');
+$requestedRow=$partial->prepare('SELECT amount,status FROM seller_withdrawals WHERE id=? AND seller_id=?');$requestedRow->execute([$firstRequest,$sellerId]);$requested=$requestedRow->fetch(PDO::FETCH_ASSOC);
+assert_true($requested!==false&&(float)$requested['amount']===$withdrawalCapacity&&$requested['status']==='pending','A withdrawal request must persist its rounded amount in pending state.');
+$invalidAmountRejected=false;
+try{seller_request_withdrawal($sellerId,NAN);}catch(RuntimeException $e){$invalidAmountRejected=true;}
+assert_true($invalidAmountRejected,'Non-finite withdrawal amounts must be rejected.');
+
 require_once $root . '/app/backup.php';
 $single->exec("CREATE TABLE backup_probe(id INT AUTO_INCREMENT PRIMARY KEY,sample_text TEXT NOT NULL,payload VARBINARY(16) NOT NULL,optional_value VARCHAR(20) NULL) ENGINE=InnoDB");
 $probe = $single->prepare("INSERT INTO backup_probe(sample_text,payload,optional_value) VALUES(?,?,NULL)");
