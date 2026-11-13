@@ -176,4 +176,17 @@ assert_true($lateRow['status']==='manual_review'&&$lateRow['payment_status']==='
 assert_true((int)$partial->query("SELECT usage_count FROM coupons WHERE code='TIMEOUT10'")->fetchColumn()===1,'Late verified payment must restore coupon usage exactly once.');
 payment_mark_paid($lateOrder,'paytr','TEST-LATE-COUPON-PAY');
 assert_true((int)$partial->query("SELECT usage_count FROM coupons WHERE code='TIMEOUT10'")->fetchColumn()===1,'Repeated late payment callback must not restore coupon usage twice.');
+// Seller earnings are recorded in the same transaction as payment acceptance.
+$partial->prepare("INSERT INTO orders(user_id,order_no,total,status,payment_status) VALUES(?,?,?,'pending','unpaid')")->execute([$userId,'TEST-PAID-SELLER-LEDGER',20]);
+$sellerPaidOrder=(int)$partial->lastInsertId();
+$partial->prepare("INSERT INTO order_items(order_id,product_id,seller_id,seller_commission_rate,discount_amount,product_name,quantity,unit_price) VALUES(?,NULL,?,10,0,'Seller item',1,20)")->execute([$sellerPaidOrder,$sellerId]);
+$partial->prepare("INSERT INTO payment_transactions(order_id,provider,provider_reference,amount,status) VALUES(?,'paytr','TEST-SELLER-LEDGER-PAY',20,'pending')")->execute([$sellerPaidOrder]);
+payment_mark_paid($sellerPaidOrder,'paytr','TEST-SELLER-LEDGER-PAY');
+$sellerCredit=$partial->prepare("SELECT amount,status FROM seller_ledger WHERE order_id=? AND seller_id=? AND entry_type='sale_credit'");$sellerCredit->execute([$sellerPaidOrder,$sellerId]);$sellerCreditRow=$sellerCredit->fetch(PDO::FETCH_ASSOC);
+assert_true($sellerCreditRow!==false&&(float)$sellerCreditRow['amount']===18.0,'Successful marketplace payment must create the seller credit before fulfillment can race with a refund.');
+// A refund committed before fulfilment must never be overwritten or delivered afterward.
+$partial->beginTransaction();seller_reverse_refunded_order($sellerPaidOrder);$partial->prepare("UPDATE orders SET status='refunded' WHERE id=?")->execute([$sellerPaidOrder]);$partial->commit();
+$refusedFulfillment=false;try{fulfill_paid_order($sellerPaidOrder);}catch(RuntimeException $e){$refusedFulfillment=str_contains($e->getMessage(),'sipariş durumunda');}
+assert_true($refusedFulfillment,'A refunded order must be blocked from late fulfilment.');
+assert_true($partial->query("SELECT status FROM orders WHERE id={$sellerPaidOrder}")->fetchColumn()==='refunded','A fulfilment race must not overwrite the refunded order state.');
 echo "MySQL migration integration checks passed: single-vendor, multi-vendor, idempotency, and interrupted migration recovery.\n";

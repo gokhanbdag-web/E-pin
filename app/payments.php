@@ -107,12 +107,13 @@ function payment_mark_paid(int $orderId,string $provider,string $reference=''):v
         $pdo->prepare("UPDATE payment_transactions SET status='success' WHERE id=?")->execute([(int)$attempt['id']]);
         $pdo->prepare("UPDATE payment_transactions SET status='superseded' WHERE order_id=? AND id<>? AND status='pending'")->execute([$orderId,(int)$attempt['id']]);
         $shouldFulfill=$reviewReason==='';
+        if($shouldFulfill&&config('business_mode')==='multi_vendor')seller_record_paid_order($orderId);
         $pdo->commit();
     } catch(Throwable $e) { if($pdo->inTransaction())$pdo->rollBack();throw $e; }
     if($reviewReason!==''){error_log($reviewReason);return;}
     if($shouldFulfill){
         try { fulfill_paid_order($orderId); seller_record_paid_order($orderId); }
-        catch(Throwable $deliveryError) { db()->prepare("UPDATE orders SET status='manual_review' WHERE id=? AND payment_status='paid'")->execute([$orderId]); error_log('Paid order '.$orderId.' requires manual fulfilment: '.$deliveryError->getMessage()); }
+        catch(Throwable $deliveryError) { db()->prepare("UPDATE orders SET status='manual_review' WHERE id=? AND payment_status='paid' AND status NOT IN ('refunded','cancelled','expired')")->execute([$orderId]); error_log('Paid order '.$orderId.' requires manual fulfilment: '.$deliveryError->getMessage()); }
     }
 }
 function paytr_signature_matches(array $post,string $key,string $salt):bool {
