@@ -168,21 +168,22 @@ assert_true($rejectAudit!==false&&$rejectAudit['from_status']==='pending'&&$reje
 // The review service must preserve caller-owned transactions and roll back failed audit writes.
 $partial->prepare("INSERT INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,NULL,'sale_credit',3,'available')")->execute([$sellerId]);
 $rollbackRequest=seller_request_withdrawal($sellerId,3,'Rollback path test');
-$partial->beginTransaction();
+$reviewPdo=db();
+$reviewPdo->beginTransaction();
 seller_review_withdrawal($rollbackRequest,'approved',$userId,'Must be rolled back by caller');
-assert_true($partial->inTransaction(),'Withdrawal review service must not commit a transaction it did not start.');
-$partial->rollBack();
-$rollbackState=$partial->prepare('SELECT status FROM seller_withdrawals WHERE id=?');$rollbackState->execute([$rollbackRequest]);
+assert_true($reviewPdo->inTransaction(),'Withdrawal review service must not commit a transaction it did not start.');
+$reviewPdo->rollBack();
+$rollbackState=$reviewPdo->prepare('SELECT status FROM seller_withdrawals WHERE id=?');$rollbackState->execute([$rollbackRequest]);
 assert_true($rollbackState->fetchColumn()==='pending','Caller rollback must undo the withdrawal status update.');
-$rollbackEvents=$partial->prepare('SELECT COUNT(*) FROM seller_withdrawal_events WHERE withdrawal_id=?');$rollbackEvents->execute([$rollbackRequest]);
+$rollbackEvents=$reviewPdo->prepare('SELECT COUNT(*) FROM seller_withdrawal_events WHERE withdrawal_id=?');$rollbackEvents->execute([$rollbackRequest]);
 assert_true((int)$rollbackEvents->fetchColumn()===0,'Caller rollback must also undo the withdrawal audit event.');
 $failedAuditRequest=seller_request_withdrawal($sellerId,3,'Failed audit path test');
 $failedAuditRolledBack=false;
 try{seller_review_withdrawal($failedAuditRequest,'approved',999999,'Invalid admin foreign key');}catch(PDOException $e){$failedAuditRolledBack=true;}
 assert_true($failedAuditRolledBack,'An invalid audit actor must cause the review transaction to fail.');
-$failedAuditState=$partial->prepare('SELECT status FROM seller_withdrawals WHERE id=?');$failedAuditState->execute([$failedAuditRequest]);
+$failedAuditState=$reviewPdo->prepare('SELECT status FROM seller_withdrawals WHERE id=?');$failedAuditState->execute([$failedAuditRequest]);
 assert_true($failedAuditState->fetchColumn()==='pending','Failed audit insertion must roll back the withdrawal status change.');
-$failedAuditEvents=$partial->prepare('SELECT COUNT(*) FROM seller_withdrawal_events WHERE withdrawal_id=?');$failedAuditEvents->execute([$failedAuditRequest]);
+$failedAuditEvents=$reviewPdo->prepare('SELECT COUNT(*) FROM seller_withdrawal_events WHERE withdrawal_id=?');$failedAuditEvents->execute([$failedAuditRequest]);
 assert_true((int)$failedAuditEvents->fetchColumn()===0,'Failed audit insertion must not leave a partial event.');
 
 
