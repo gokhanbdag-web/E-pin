@@ -1,0 +1,4 @@
+/config.php
+/storage/*
+!/storage/.htaccess
+/.env
