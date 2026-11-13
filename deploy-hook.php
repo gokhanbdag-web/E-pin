@@ -59,6 +59,9 @@ $payload = json_decode($body, true);
 if (!is_array($payload)) {
     epin_webhook_reply(400, 'Invalid JSON payload');
 }
+if (($payload['repository']['full_name'] ?? '') !== 'gokhanbdag-web/E-pin') {
+    epin_webhook_reply(403, 'Repository not allowed');
+}
 if (($payload['ref'] ?? '') !== 'refs/heads/main') {
     epin_webhook_reply(202, 'Ignored: only main branch is deployed');
 }
