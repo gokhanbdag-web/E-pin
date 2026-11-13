@@ -60,8 +60,10 @@ echo "BAŞARILI: Staging PHP sözdizimi kontrolü."
 echo "DAĞITIM: Dosyalar canlı dizine aktarılıyor."
 rsync -rlptDz --delete \
     --exclude='/config.php' \
-    --exclude='/storage/' \
-    --exclude='/uploads/' \
+    --include='/storage/.htaccess' \
+    --exclude='/storage/*' \
+    --include='/uploads/.htaccess' \
+    --exclude='/uploads/*' \
     --exclude='/deploy-hook.php' \
     --exclude='/.git/' \
     --exclude='/.github/' \
