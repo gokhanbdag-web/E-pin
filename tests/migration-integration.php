@@ -187,8 +187,10 @@ try{seller_review_withdrawal($failedAuditRequest,'approved',999999,'Invalid admi
 assert_true($failedAuditRolledBack,'An invalid audit actor must cause the review transaction to fail.');
 $failedAuditState=$reviewPdo->prepare('SELECT status FROM seller_withdrawals WHERE id=?');$failedAuditState->execute([$failedAuditRequest]);
 assert_true($failedAuditState->fetchColumn()==='pending','Failed audit insertion must roll back the withdrawal status change.');
-$failedAuditEvents=$reviewPdo->prepare('SELECT COUNT(*) FROM seller_withdrawal_events WHERE withdrawal_id=?');$failedAuditEvents->execute([$failedAuditRequest]);
-assert_true((int)$failedAuditEvents->fetchColumn()===0,'Failed audit insertion must not leave a partial event.');
+$failedAuditEvents=$reviewPdo->prepare("SELECT COUNT(*) FROM seller_withdrawal_events WHERE withdrawal_id=? AND from_status='pending' AND to_status='approved'");$failedAuditEvents->execute([$failedAuditRequest]);
+assert_true((int)$failedAuditEvents->fetchColumn()===0,'Failed audit insertion must not leave a partial approval event.');
+$failedCreationEvents=$reviewPdo->prepare("SELECT COUNT(*) FROM seller_withdrawal_events WHERE withdrawal_id=? AND from_status='created' AND to_status='pending'");$failedCreationEvents->execute([$failedAuditRequest]);
+assert_true((int)$failedCreationEvents->fetchColumn()===1,'Failed review must preserve the original withdrawal creation audit event.');
 
 
 
