@@ -1,0 +1,101 @@
+name: PHP checks and production deployment
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  php-lint:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_mysql
+      - name: Lint PHP source files
+        run: |
+          set -e
+          while IFS= read -r -d '' file; do
+            php -l "$file"
+          done < <(find . -type f -name '*.php' -not -path './vendor/*' -print0)
+      - name: Subdirectory and root routing smoke tests
+        run: php tests/routing-smoke.php
+      - name: Database migration contract tests
+        run: php tests/migration-contract.php
+      - name: Security contract tests
+        run: php tests/security-contract.php
+      - name: Database backup contract tests
+        run: php tests/backup-contract.php
+      - name: Payment callback contract tests
+        run: php tests/payment-contract.php
+      - name: MySQL migration integration tests
+        env:
+          EPIN_TEST_DB_HOST: 127.0.0.1
+          EPIN_TEST_DB_PORT: 3306
+          EPIN_TEST_DB_USER: root
+          EPIN_TEST_DB_PASS: root
+        run: php tests/migration-integration.php
+
+  deploy:
+    name: Deploy to epinmania.com
+    needs: php-lint
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.EPIN_DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EPIN_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.EPIN_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          test -n "$SSH_PRIVATE_KEY"
+          test -n "$SSH_KNOWN_HOSTS"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/epin_deploy_key
+          chmod 600 ~/.ssh/epin_deploy_key
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+      - name: Deploy application files
+        env:
+          SSH_HOST: ${{ secrets.EPIN_SSH_HOST }}
+          SSH_USER: ${{ secrets.EPIN_SSH_USER }}
+          SSH_PORT: ${{ secrets.EPIN_SSH_PORT }}
+        run: |
+          set -euo pipefail
+          test -n "$SSH_HOST"
+          test -n "$SSH_USER"
+          SSH_PORT="${SSH_PORT:-22}"
+          SSH_OPTS="-i ~/.ssh/epin_deploy_key -p $SSH_PORT -o BatchMode=yes -o StrictHostKeyChecking=yes"
+          ssh $SSH_OPTS "$SSH_USER@$SSH_HOST" 'mkdir -p /home/epinmania.com/public_html'
+          rsync -az --omit-dir-times \
+            --exclude='/.git/' \
+            --exclude='/.github/' \
+            --exclude='/tests/' \
+            --exclude='/config.php' \
+            --exclude='/.env' \
+            --exclude='/storage/' \
+            --exclude='/uploads/' \
+            --exclude='/README.md' \
+            --exclude='/.gitignore' \
+            -e "ssh -i ~/.ssh/epin_deploy_key -p $SSH_PORT -o BatchMode=yes -o StrictHostKeyChecking=yes" \
+            ./ "$SSH_USER@$SSH_HOST:/home/epinmania.com/public_html/"
+          ssh $SSH_OPTS "$SSH_USER@$SSH_HOST" "if [ -f /home/epinmania.com/public_html/index.html ] && grep -qi 'CyberPanel Installed' /home/epinmania.com/public_html/index.html; then rm -f /home/epinmania.com/public_html/index.html; fi"
+      - name: Verify production installer response
+        run: |
+          set -euo pipefail
+          curl --retry 5 --retry-delay 3 --retry-connrefused -fsS -o /dev/null -w 'HTTP %{http_code}\n' https://epinmania.com/
