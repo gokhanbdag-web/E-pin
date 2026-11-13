@@ -51,6 +51,9 @@ git -C "$STAGING" reset --hard origin/main
 # Keep the server-side runner current without exposing it in the web root.
 install -m 750 "$STAGING/ops/deploy.sh" "$BASE/deploy.sh.next"
 mv -f "$BASE/deploy.sh.next" "$BASE/deploy.sh"
+if [[ "$(id -u)" -eq 0 ]]; then
+    chown "$OWNER:$GROUP" "$BASE/deploy.sh"
+fi
 
 COMMIT="$(git -C "$STAGING" rev-parse --short HEAD)"
 echo "KAYNAK: main @ $COMMIT"
@@ -94,7 +97,7 @@ chmod 640 "$LIVE/deploy-hook.php"
 
 if [[ "$(id -u)" -eq 0 ]]; then
     chown -R "$OWNER:$GROUP" "$LIVE"
-    chown "$OWNER:$GROUP" "$BASE" "$LOG" "$LOCK" 2>/dev/null || true
+    chown "$OWNER:$GROUP" "$BASE" "$BASE/deploy.sh" "$LOG" "$LOCK" 2>/dev/null || true
 fi
 
 echo "SAĞLIK: https://epinmania.com/ HTTP kontrolü yapılıyor."
