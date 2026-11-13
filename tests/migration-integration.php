@@ -153,4 +153,27 @@ $appPdo->beginTransaction();seller_reverse_refunded_order($refundAvailableOrder)
 $reversalCount=$partial->prepare("SELECT COUNT(*) FROM seller_ledger WHERE order_id=? AND entry_type IN ('refund_debit','commission_reversal')");$reversalCount->execute([$refundAvailableOrder]);
 assert_true((int)$reversalCount->fetchColumn()===2, 'Repeated refund processing must not duplicate reversal entries.');
 
+// Expired orders release coupon usage and pending payment attempts exactly once.
+$partial->prepare("INSERT INTO coupons(code,discount_type,discount_value,usage_limit,usage_count,status) VALUES('TIMEOUT10','fixed',10,10,1,'active')")->execute();
+$partial->prepare("INSERT INTO orders(user_id,order_no,subtotal,discount_total,coupon_code,total,status,payment_status,created_at) VALUES(?,?,?,?,?,?,'pending','unpaid',DATE_SUB(NOW(),INTERVAL 31 MINUTE))")->execute([$userId,'TEST-COUPON-EXPIRE',10,10,'TIMEOUT10',0]);
+$expiredCouponOrder=(int)$partial->lastInsertId();
+$partial->prepare("INSERT INTO payment_transactions(order_id,provider,provider_reference,amount,status) VALUES(?,'paytr','TEST-EXPIRED-ATTEMPT',0,'pending')")->execute([$expiredCouponOrder]);
+$appPdo=db();
+$appPdo->beginTransaction();expire_stale_orders($appPdo);$appPdo->commit();
+$expiredState=$partial->prepare('SELECT status,coupon_usage_released FROM orders WHERE id=?');$expiredState->execute([$expiredCouponOrder]);$expiredRow=$expiredState->fetch(PDO::FETCH_ASSOC);
+assert_true($expiredRow['status']==='expired'&&(int)$expiredRow['coupon_usage_released']===1,'Timed-out order must be expired and coupon release marked.');
+assert_true((int)$partial->query("SELECT usage_count FROM coupons WHERE code='TIMEOUT10'")->fetchColumn()===0,'Timed-out order must decrement coupon usage exactly once.');
+assert_true($partial->query("SELECT status FROM payment_transactions WHERE provider_reference='TEST-EXPIRED-ATTEMPT'")->fetchColumn()==='expired','Pending payment attempt must expire with its order.');
+$appPdo->beginTransaction();expire_stale_orders($appPdo);$appPdo->commit();
+assert_true((int)$partial->query("SELECT usage_count FROM coupons WHERE code='TIMEOUT10'")->fetchColumn()===0,'Repeated timeout cleanup must not decrement coupon usage twice.');
+// A late verified payment restores the released coupon usage exactly once and requires manual review.
+$partial->prepare("INSERT INTO orders(user_id,order_no,subtotal,discount_total,coupon_code,total,status,payment_status,coupon_usage_released) VALUES(?,?,?,?,?,?,'expired','unpaid',1)")->execute([$userId,'TEST-LATE-COUPON',10,5,'TIMEOUT10',5]);
+$lateOrder=(int)$partial->lastInsertId();
+$partial->prepare("INSERT INTO payment_transactions(order_id,provider,provider_reference,amount,status) VALUES(?,'paytr','TEST-LATE-COUPON-PAY',5,'pending')")->execute([$lateOrder]);
+payment_mark_paid($lateOrder,'paytr','TEST-LATE-COUPON-PAY');
+$lateState=$partial->prepare('SELECT status,payment_status,coupon_usage_released FROM orders WHERE id=?');$lateState->execute([$lateOrder]);$lateRow=$lateState->fetch(PDO::FETCH_ASSOC);
+assert_true($lateRow['status']==='manual_review'&&$lateRow['payment_status']==='paid'&&(int)$lateRow['coupon_usage_released']===0,'Late payment must be paid but held for manual review, with coupon release cleared.');
+assert_true((int)$partial->query("SELECT usage_count FROM coupons WHERE code='TIMEOUT10'")->fetchColumn()===1,'Late verified payment must restore coupon usage exactly once.');
+payment_mark_paid($lateOrder,'paytr','TEST-LATE-COUPON-PAY');
+assert_true((int)$partial->query("SELECT usage_count FROM coupons WHERE code='TIMEOUT10'")->fetchColumn()===1,'Repeated late payment callback must not restore coupon usage twice.');
 echo "MySQL migration integration checks passed: single-vendor, multi-vendor, idempotency, and interrupted migration recovery.\n";
