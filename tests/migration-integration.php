@@ -49,12 +49,14 @@ assert_true(migration_count($single) === 2, 'Repeated single-vendor migration ch
 // Clean multi-vendor install.
 $multi = test_db($server, 'epin_multi_test', 'multi_vendor');
 app_migrate($multi);
-assert_true(migration_count($multi) === 3, 'Multi-vendor install must apply all three migrations.');
+assert_true(migration_count($multi) === 4, 'Multi-vendor install must apply all four migrations.');
 assert_true(has_table($multi, 'seller_profiles') && has_table($multi, 'seller_ledger') && has_table($multi, 'seller_withdrawals'), 'Marketplace tables are missing.');
 assert_true(has_column($multi, 'products', 'seller_id'), 'Marketplace product seller column is missing.');
 assert_true(has_index($multi, 'seller_ledger', 'uq_seller_ledger_order_entry'), 'Marketplace ledger unique index is missing.');
+assert_true(has_column($multi, 'seller_ledger', 'withdrawal_id'), 'Seller withdrawal ledger reference is missing.');
+assert_true(has_index($multi, 'seller_ledger', 'uq_seller_ledger_withdrawal_entry'), 'Seller withdrawal idempotency index is missing.');
 app_migrate($multi);
-assert_true(migration_count($multi) === 3, 'Repeated multi-vendor migration changed applied versions.');
+assert_true(migration_count($multi) === 4, 'Repeated multi-vendor migration changed applied versions.');
 
 // Simulate a partially applied marketplace migration on a legacy single-vendor database.
 // DDL before the failing unique-index step must survive and the migration must resume safely.
@@ -88,10 +90,21 @@ $keepId = (int)$partial->query('SELECT MIN(id) FROM seller_ledger')->fetchColumn
 $delete = $partial->prepare('DELETE FROM seller_ledger WHERE id=?');
 $delete->execute([$keepId]);
 db();
-assert_true(migration_count($partial) === 3, 'Marketplace migration did not resume after the duplicate was resolved through the application bootstrap.');
+assert_true(migration_count($partial) === 4, 'Marketplace migrations did not resume after the duplicate was resolved through the application bootstrap.');
 assert_true(has_index($partial, 'seller_ledger', 'uq_seller_ledger_order_entry'), 'Resumed migration did not create the ledger unique index.');
 db();
-assert_true(migration_count($partial) === 3, 'Repeated resumed migration through the application bootstrap is not idempotent.');
+assert_true(migration_count($partial) === 4, 'Repeated resumed migration through the application bootstrap is not idempotent.');
+// A paid withdrawal must have a durable, unique ledger reference to its request.
+$partial->prepare("INSERT INTO seller_withdrawals(seller_id,amount,note) VALUES(?,5,'test payout')")->execute([$sellerId]);
+$withdrawalId=(int)$partial->lastInsertId();
+$withdrawalLedger=$partial->prepare("INSERT INTO seller_ledger(seller_id,order_id,withdrawal_id,entry_type,amount,status) VALUES(?,NULL,?,'withdrawal',-5,'available')");
+$withdrawalLedger->execute([$sellerId,$withdrawalId]);
+$duplicateWithdrawalBlocked=false;
+try{$withdrawalLedger->execute([$sellerId,$withdrawalId]);}catch(PDOException $e){$duplicateWithdrawalBlocked=true;}
+assert_true($duplicateWithdrawalBlocked,'The database must reject duplicate ledger debits for the same withdrawal request.');
+$withdrawalRef=$partial->prepare("SELECT withdrawal_id,amount FROM seller_ledger WHERE seller_id=? AND withdrawal_id=? AND entry_type='withdrawal'");
+$withdrawalRef->execute([$sellerId,$withdrawalId]);$withdrawalEntry=$withdrawalRef->fetch(PDO::FETCH_ASSOC);
+assert_true($withdrawalEntry!==false&&(int)$withdrawalEntry['withdrawal_id']===$withdrawalId&&(float)$withdrawalEntry['amount']===-5.0,'Withdrawal debit must point to the exact payout request.');
 
 require_once $root . '/app/backup.php';
 $single->exec("CREATE TABLE backup_probe(id INT AUTO_INCREMENT PRIMARY KEY,sample_text TEXT NOT NULL,payload VARBINARY(16) NOT NULL,optional_value VARCHAR(20) NULL) ENGINE=InnoDB");

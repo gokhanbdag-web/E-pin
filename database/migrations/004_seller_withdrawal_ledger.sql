@@ -1,0 +1,5 @@
+-- @mode multi_vendor
+-- Each payout debit is permanently tied to its withdrawal request.
+-- @add-column seller_ledger withdrawal_id BIGINT UNSIGNED NULL
+-- @unique-index seller_ledger uq_seller_ledger_withdrawal_entry seller_id,withdrawal_id,entry_type
+-- @add-foreign-key seller_ledger fk_ledger_withdrawal withdrawal_id seller_withdrawals id RESTRICT

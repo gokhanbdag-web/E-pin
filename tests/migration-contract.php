@@ -25,6 +25,8 @@ $required = [
     '-- @add-foreign-key products fk_product_seller seller_id seller_profiles id SET NULL',
     '-- @unique-index payment_transactions uq_payment_provider_reference',
     '-- @unique-index seller_ledger uq_seller_ledger_order_entry',
+    '-- @add-column seller_ledger withdrawal_id BIGINT UNSIGNED NULL',
+    '-- @unique-index seller_ledger uq_seller_ledger_withdrawal_entry',
 ];
 foreach ($required as $needle) if (!str_contains($all, $needle)) throw new RuntimeException('Missing migration contract: ' . $needle);
 if (!str_contains(file_get_contents($files[2]), '-- @mode multi_vendor')) throw new RuntimeException('Marketplace migration must be restricted to multi-vendor mode.');
