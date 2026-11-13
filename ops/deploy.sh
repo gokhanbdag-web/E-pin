@@ -48,6 +48,10 @@ git -C "$STAGING" fetch --prune origin main
 git -C "$STAGING" checkout -B main origin/main
 git -C "$STAGING" reset --hard origin/main
 
+# Keep the server-side runner current without exposing it in the web root.
+install -m 750 "$STAGING/ops/deploy.sh" "$BASE/deploy.sh.next"
+mv -f "$BASE/deploy.sh.next" "$BASE/deploy.sh"
+
 COMMIT="$(git -C "$STAGING" rev-parse --short HEAD)"
 echo "KAYNAK: main @ $COMMIT"
 
@@ -73,11 +77,13 @@ rsync -rlptDz --delete \
     --exclude='/.gitignore' \
     "$STAGING/" "$LIVE/"
 
+install -m 640 "$STAGING/deploy-hook.php" "$LIVE/deploy-hook.php"
+
 echo "KONTROL: Canlı PHP dosyaları denetleniyor."
 "$PHP" -l "$LIVE/index.php"
 "$PHP" -l "$LIVE/deploy-hook.php"
 find "$LIVE" -type d -not -path "$LIVE/storage*" -not -path "$LIVE/uploads*" -exec chmod 755 {} +
-find "$LIVE" -type f -not -path "$LIVE/storage/*" -not -path "$LIVE/uploads/*" -exec chmod 644 {} +
+find "$LIVE" -type f -not -path "$LIVE/storage/*" -not -path "$LIVE/uploads/*" -not -path "$LIVE/config.php" -exec chmod 644 {} +
 for persistent in "$LIVE/storage" "$LIVE/uploads"; do
     if [[ -d "$persistent" ]]; then
         find "$persistent" -type d -exec chmod 750 {} +
