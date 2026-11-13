@@ -106,6 +106,22 @@ $withdrawalRef=$partial->prepare("SELECT withdrawal_id,amount FROM seller_ledger
 $withdrawalRef->execute([$sellerId,$withdrawalId]);$withdrawalEntry=$withdrawalRef->fetch(PDO::FETCH_ASSOC);
 assert_true($withdrawalEntry!==false&&(int)$withdrawalEntry['withdrawal_id']===$withdrawalId&&(float)$withdrawalEntry['amount']===-5.0,'Withdrawal debit must point to the exact payout request.');
 
+// Financial summary reconciles pending credits, net available ledger, reservations and historical payouts.
+$beforeFinance=seller_financial_summary($sellerId);
+$partial->prepare("INSERT INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,NULL,'sale_credit',12,'pending')")->execute([$sellerId]);
+$partial->prepare("INSERT INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,NULL,'sale_credit',100,'available')")->execute([$sellerId]);
+$partial->prepare("INSERT INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,NULL,'refund_debit',-20,'available')")->execute([$sellerId]);
+$partial->prepare("INSERT INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,NULL,'platform_commission',-5,'settled')")->execute([$sellerId]);
+$partial->prepare("INSERT INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,NULL,'commission_reversal',2,'settled')")->execute([$sellerId]);
+$partial->prepare("INSERT INTO seller_withdrawals(seller_id,amount,status,note) VALUES(?,15,'pending','pending summary test'),(?,5,'approved','approved summary test'),(?,30,'paid','paid summary test')")->execute([$sellerId,$sellerId,$sellerId]);
+$afterFinance=seller_financial_summary($sellerId);
+assert_true(abs(($afterFinance['pendingEarnings']-$beforeFinance['pendingEarnings'])-12)<0.001,'Pending seller earnings must be reported separately.');
+assert_true(abs(($afterFinance['ledgerBalance']-$beforeFinance['ledgerBalance'])-80)<0.001,'Net available ledger must include refund debits but exclude settled commission rows.');
+assert_true(abs(($afterFinance['reservedBalance']-$beforeFinance['reservedBalance'])-20)<0.001,'Pending and approved withdrawals must reserve funds.');
+assert_true(abs(($afterFinance['withdrawnTotal']-$beforeFinance['withdrawnTotal'])-30)<0.001,'Paid withdrawals must be reported as historical payouts.');
+assert_true(abs(($afterFinance['refundedTotal']-$beforeFinance['refundedTotal'])-20)<0.001,'Refund debits must be shown as positive refunded totals.');
+assert_true(abs(($afterFinance['commissionNet']-$beforeFinance['commissionNet'])-(-3))<0.001,'Commission reversals must offset platform commission.');
+
 require_once $root . '/app/backup.php';
 $single->exec("CREATE TABLE backup_probe(id INT AUTO_INCREMENT PRIMARY KEY,sample_text TEXT NOT NULL,payload VARBINARY(16) NOT NULL,optional_value VARCHAR(20) NULL) ENGINE=InnoDB");
 $probe = $single->prepare("INSERT INTO backup_probe(sample_text,payload,optional_value) VALUES(?,?,NULL)");
