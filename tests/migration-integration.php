@@ -177,8 +177,10 @@ assert_true($reviewPdo->inTransaction(),'Withdrawal review service must not comm
 $reviewPdo->rollBack();
 $rollbackState=$reviewPdo->prepare('SELECT status FROM seller_withdrawals WHERE id=?');$rollbackState->execute([$rollbackRequest]);
 assert_true($rollbackState->fetchColumn()==='pending','Caller rollback must undo the withdrawal status update.');
-$rollbackEvents=$reviewPdo->prepare('SELECT COUNT(*) FROM seller_withdrawal_events WHERE withdrawal_id=?');$rollbackEvents->execute([$rollbackRequest]);
-assert_true((int)$rollbackEvents->fetchColumn()===0,'Caller rollback must also undo the withdrawal audit event.');
+$rollbackEvents=$reviewPdo->prepare("SELECT COUNT(*) FROM seller_withdrawal_events WHERE withdrawal_id=? AND from_status='pending' AND to_status='approved'");$rollbackEvents->execute([$rollbackRequest]);
+assert_true((int)$rollbackEvents->fetchColumn()===0,'Caller rollback must undo the approval audit event.');
+$initialEvents=$reviewPdo->prepare("SELECT COUNT(*) FROM seller_withdrawal_events WHERE withdrawal_id=? AND from_status='created' AND to_status='pending'");$initialEvents->execute([$rollbackRequest]);
+assert_true((int)$initialEvents->fetchColumn()===1,'Caller rollback must preserve the original withdrawal creation audit event.');
 $failedAuditRequest=seller_request_withdrawal($sellerId,3,'Failed audit path test');
 $failedAuditRolledBack=false;
 try{seller_review_withdrawal($failedAuditRequest,'approved',999999,'Invalid admin foreign key');}catch(PDOException $e){$failedAuditRolledBack=true;}
