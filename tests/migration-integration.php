@@ -185,7 +185,7 @@ payment_mark_paid($sellerPaidOrder,'paytr','TEST-SELLER-LEDGER-PAY');
 $sellerCredit=$partial->prepare("SELECT amount,status FROM seller_ledger WHERE order_id=? AND seller_id=? AND entry_type='sale_credit'");$sellerCredit->execute([$sellerPaidOrder,$sellerId]);$sellerCreditRow=$sellerCredit->fetch(PDO::FETCH_ASSOC);
 assert_true($sellerCreditRow!==false&&(float)$sellerCreditRow['amount']===18.0,'Successful marketplace payment must create the seller credit before fulfillment can race with a refund.');
 // A refund committed before fulfilment must never be overwritten or delivered afterward.
-$partial->beginTransaction();seller_reverse_refunded_order($sellerPaidOrder);$partial->prepare("UPDATE orders SET status='refunded' WHERE id=?")->execute([$sellerPaidOrder]);$partial->commit();
+$appPdo->beginTransaction();seller_reverse_refunded_order($sellerPaidOrder);$appPdo->prepare("UPDATE orders SET status='refunded' WHERE id=?")->execute([$sellerPaidOrder]);$appPdo->commit();
 $refusedFulfillment=false;try{fulfill_paid_order($sellerPaidOrder);}catch(RuntimeException $e){$refusedFulfillment=str_contains($e->getMessage(),'sipariş durumunda');}
 assert_true($refusedFulfillment,'A refunded order must be blocked from late fulfilment.');
 assert_true($partial->query("SELECT status FROM orders WHERE id={$sellerPaidOrder}")->fetchColumn()==='refunded','A fulfilment race must not overwrite the refunded order state.');

@@ -1,1 +1,0 @@
-<section class="content-page"><p class="eyebrow">GÜVENLİ ÖDEME</p><h1>iyzico ödeme</h1><div id="iyzipay-checkout-form" class="responsive"></div><?= $checkoutFormContent ?></section>

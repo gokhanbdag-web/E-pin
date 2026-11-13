@@ -1,1 +1,0 @@
-<section class="content-page"><h1><?= e($title??'Sayfa bulunamadı') ?></h1><p>Aradığınız içerik yayında olmayabilir veya kaldırılmış olabilir.</p><a class="primary-link" href="<?= e(url()) ?>">Mağazaya dön</a></section>

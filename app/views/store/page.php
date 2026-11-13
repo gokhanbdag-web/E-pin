@@ -1,1 +1,0 @@
-<article class="content-page"><h1><?= e($page['title']) ?></h1><div class="page-content"><?= nl2br(e($page['content']??'')) ?></div></article>
