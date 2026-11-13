@@ -136,6 +136,8 @@ try{seller_request_withdrawal($sellerId,0.01);}catch(RuntimeException $e){$overs
 assert_true($overspendRejected,'A second withdrawal request must not reserve funds already committed by a pending request.');
 $requestedRow=$partial->prepare('SELECT amount,status FROM seller_withdrawals WHERE id=? AND seller_id=?');$requestedRow->execute([$firstRequest,$sellerId]);$requested=$requestedRow->fetch(PDO::FETCH_ASSOC);
 assert_true($requested!==false&&(float)$requested['amount']===$withdrawalCapacity&&$requested['status']==='pending','A withdrawal request must persist its rounded amount in pending state.');
+$creationEvent=$partial->prepare("SELECT from_status,to_status,admin_user_id,note FROM seller_withdrawal_events WHERE withdrawal_id=? ORDER BY id LIMIT 1");$creationEvent->execute([$firstRequest]);$createdAudit=$creationEvent->fetch(PDO::FETCH_ASSOC);
+assert_true($createdAudit!==false&&$createdAudit['from_status']==='created'&&$createdAudit['to_status']==='pending'&&$createdAudit['admin_user_id']===null&&$createdAudit['note']===null,'Withdrawal creation must be recorded as a system audit event.');
 $invalidAmountRejected=false;
 try{seller_request_withdrawal($sellerId,NAN);}catch(RuntimeException $e){$invalidAmountRejected=true;}
 assert_true($invalidAmountRejected,'Non-finite withdrawal amounts must be rejected.');

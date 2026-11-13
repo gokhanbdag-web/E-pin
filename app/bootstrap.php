@@ -129,7 +129,10 @@ function seller_request_withdrawal(int $sellerId,float $amount,string $note=''):
   $q=$pdo->prepare("SELECT COALESCE(SUM(amount),0) FROM seller_withdrawals WHERE seller_id=? AND status IN ('pending','approved')");$q->execute([$sellerId]);$reserved=(float)$q->fetchColumn();
   if($amount>max(0,$balance-$reserved))throw new RuntimeException('Kullanılabilir bakiyeniz yetersiz.');
   $insert=$pdo->prepare('INSERT INTO seller_withdrawals(seller_id,amount,note) VALUES(?,?,?)');$insert->execute([$sellerId,number_format($amount,2,'.',''),substr(trim($note),0,500)]);
-  $id=(int)$pdo->lastInsertId();if($ownsTransaction)$pdo->commit();return $id;
+  $id=(int)$pdo->lastInsertId();
+  $event=$pdo->prepare("INSERT INTO seller_withdrawal_events(withdrawal_id,admin_user_id,from_status,to_status,note) VALUES(?,NULL,'created','pending',?)");
+  $event->execute([$id,substr(trim($note),0,500)?:null]);
+  if($ownsTransaction)$pdo->commit();return $id;
  }catch(Throwable $e){if($ownsTransaction&&$pdo->inTransaction())$pdo->rollBack();throw $e;}
 }
 
