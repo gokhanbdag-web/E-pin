@@ -19,7 +19,7 @@ $required = [
     'CREATE TABLE IF NOT EXISTS product_variants','CREATE TABLE IF NOT EXISTS inventory_codes',
     'CREATE TABLE IF NOT EXISTS order_deliveries','CREATE TABLE IF NOT EXISTS refund_requests',
     'CREATE TABLE IF NOT EXISTS support_tickets','CREATE TABLE IF NOT EXISTS seller_profiles',
-    'CREATE TABLE IF NOT EXISTS seller_ledger','CREATE TABLE IF NOT EXISTS seller_withdrawals',
+    'CREATE TABLE IF NOT EXISTS seller_ledger','CREATE TABLE IF NOT EXISTS seller_withdrawals','CREATE TABLE IF NOT EXISTS seller_withdrawal_events',
     '-- @add-column orders coupon_usage_released','-- @add-column order_items variant_id',
     '-- @add-column products seller_id',
     '-- @add-foreign-key products fk_product_seller seller_id seller_profiles id SET NULL',

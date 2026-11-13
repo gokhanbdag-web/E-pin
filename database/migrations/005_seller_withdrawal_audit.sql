@@ -1,0 +1,3 @@
+-- @mode multi_vendor
+-- Immutable audit trail for seller withdrawal decisions.
+CREATE TABLE IF NOT EXISTS seller_withdrawal_events(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,withdrawal_id BIGINT UNSIGNED NOT NULL,admin_user_id BIGINT UNSIGNED NULL,from_status VARCHAR(20) NOT NULL,to_status VARCHAR(20) NOT NULL,note VARCHAR(500) NULL,created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,KEY idx_withdrawal_event_request(withdrawal_id,id),CONSTRAINT fk_withdrawal_event_request FOREIGN KEY(withdrawal_id) REFERENCES seller_withdrawals(id) ON DELETE RESTRICT,CONSTRAINT fk_withdrawal_event_admin FOREIGN KEY(admin_user_id) REFERENCES users(id) ON DELETE SET NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

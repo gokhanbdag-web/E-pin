@@ -49,14 +49,14 @@ assert_true(migration_count($single) === 2, 'Repeated single-vendor migration ch
 // Clean multi-vendor install.
 $multi = test_db($server, 'epin_multi_test', 'multi_vendor');
 app_migrate($multi);
-assert_true(migration_count($multi) === 4, 'Multi-vendor install must apply all four migrations.');
-assert_true(has_table($multi, 'seller_profiles') && has_table($multi, 'seller_ledger') && has_table($multi, 'seller_withdrawals'), 'Marketplace tables are missing.');
+assert_true(migration_count($multi) === 5, 'Multi-vendor install must apply all five migrations.');
+assert_true(has_table($multi, 'seller_profiles') && has_table($multi, 'seller_ledger') && has_table($multi, 'seller_withdrawals') && has_table($multi, 'seller_withdrawal_events'), 'Marketplace tables are missing.');
 assert_true(has_column($multi, 'products', 'seller_id'), 'Marketplace product seller column is missing.');
 assert_true(has_index($multi, 'seller_ledger', 'uq_seller_ledger_order_entry'), 'Marketplace ledger unique index is missing.');
 assert_true(has_column($multi, 'seller_ledger', 'withdrawal_id'), 'Seller withdrawal ledger reference is missing.');
 assert_true(has_index($multi, 'seller_ledger', 'uq_seller_ledger_withdrawal_entry'), 'Seller withdrawal idempotency index is missing.');
 app_migrate($multi);
-assert_true(migration_count($multi) === 4, 'Repeated multi-vendor migration changed applied versions.');
+assert_true(migration_count($multi) === 5, 'Repeated multi-vendor migration changed applied versions.');
 
 // Simulate a partially applied marketplace migration on a legacy single-vendor database.
 // DDL before the failing unique-index step must survive and the migration must resume safely.
@@ -90,10 +90,10 @@ $keepId = (int)$partial->query('SELECT MIN(id) FROM seller_ledger')->fetchColumn
 $delete = $partial->prepare('DELETE FROM seller_ledger WHERE id=?');
 $delete->execute([$keepId]);
 db();
-assert_true(migration_count($partial) === 4, 'Marketplace migrations did not resume after the duplicate was resolved through the application bootstrap.');
+assert_true(migration_count($partial) === 5, 'Marketplace migrations did not resume after the duplicate was resolved through the application bootstrap.');
 assert_true(has_index($partial, 'seller_ledger', 'uq_seller_ledger_order_entry'), 'Resumed migration did not create the ledger unique index.');
 db();
-assert_true(migration_count($partial) === 4, 'Repeated resumed migration through the application bootstrap is not idempotent.');
+assert_true(migration_count($partial) === 5, 'Repeated resumed migration through the application bootstrap is not idempotent.');
 // A paid withdrawal must have a durable, unique ledger reference to its request.
 $partial->prepare("INSERT INTO seller_withdrawals(seller_id,amount,note) VALUES(?,5,'test payout')")->execute([$sellerId]);
 $withdrawalId=(int)$partial->lastInsertId();
@@ -105,6 +105,10 @@ assert_true($duplicateWithdrawalBlocked,'The database must reject duplicate ledg
 $withdrawalRef=$partial->prepare("SELECT withdrawal_id,amount FROM seller_ledger WHERE seller_id=? AND withdrawal_id=? AND entry_type='withdrawal'");
 $withdrawalRef->execute([$sellerId,$withdrawalId]);$withdrawalEntry=$withdrawalRef->fetch(PDO::FETCH_ASSOC);
 assert_true($withdrawalEntry!==false&&(int)$withdrawalEntry['withdrawal_id']===$withdrawalId&&(float)$withdrawalEntry['amount']===-5.0,'Withdrawal debit must point to the exact payout request.');
+$partial->prepare("INSERT INTO seller_withdrawal_events(withdrawal_id,admin_user_id,from_status,to_status,note) VALUES(?,?,'pending','approved','review test')")->execute([$withdrawalId,$userId]);
+$eventCheck=$partial->prepare('SELECT from_status,to_status,note FROM seller_withdrawal_events WHERE withdrawal_id=?');$eventCheck->execute([$withdrawalId]);$event=$eventCheck->fetch(PDO::FETCH_ASSOC);
+assert_true($event!==false&&$event['from_status']==='pending'&&$event['to_status']==='approved'&&$event['note']==='review test','Withdrawal state changes must have an auditable actor-linked history.');
+
 
 // Financial summary reconciles pending credits, net available ledger, reservations and historical payouts.
 $beforeFinance=seller_financial_summary($sellerId);
