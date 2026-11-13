@@ -96,7 +96,8 @@ done
 chmod 640 "$LIVE/deploy-hook.php"
 
 if [[ "$(id -u)" -eq 0 ]]; then
-    chown -R "$OWNER:$GROUP" "$LIVE"
+    chown "$OWNER:$GROUP" "$LIVE"
+    find "$LIVE" -mindepth 1 -maxdepth 1 ! -name storage ! -name uploads -exec chown -R "$OWNER:$GROUP" {} +
     chown "$OWNER:$GROUP" "$BASE" "$BASE/deploy.sh" "$LOG" "$LOCK" 2>/dev/null || true
 fi
 
