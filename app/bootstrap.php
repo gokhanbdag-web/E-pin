@@ -133,6 +133,32 @@ function seller_request_withdrawal(int $sellerId,float $amount,string $note=''):
  }catch(Throwable $e){if($ownsTransaction&&$pdo->inTransaction())$pdo->rollBack();throw $e;}
 }
 
+function seller_review_withdrawal(int $withdrawalId,string $decision,int $adminUserId,string $note=''):void{
+ if($withdrawalId<1||$adminUserId<1||!in_array($decision,['approved','rejected','paid'],true))throw new RuntimeException('Geçersiz ödeme kararı.');
+ $pdo=db();$ownsTransaction=!$pdo->inTransaction();if($ownsTransaction)$pdo->beginTransaction();
+ try{
+  $q=$pdo->prepare('SELECT seller_id FROM seller_withdrawals WHERE id=?');$q->execute([$withdrawalId]);$sellerId=(int)$q->fetchColumn();
+  if(!$sellerId)throw new RuntimeException('Ödeme talebi bulunamadı.');
+  $sellerLock=$pdo->prepare('SELECT id FROM seller_profiles WHERE id=? FOR UPDATE');$sellerLock->execute([$sellerId]);
+  if(!$sellerLock->fetchColumn())throw new RuntimeException('Satıcı hesabı bulunamadı.');
+  $q=$pdo->prepare('SELECT * FROM seller_withdrawals WHERE id=? AND seller_id=? FOR UPDATE');$q->execute([$withdrawalId,$sellerId]);$withdrawal=$q->fetch();
+  if(!$withdrawal)throw new RuntimeException('Ödeme talebi bulunamadı.');
+  $from=(string)$withdrawal['status'];$allowed=['approved'=>['pending'],'rejected'=>['pending','approved'],'paid'=>['approved']];
+  if(!in_array($from,$allowed[$decision],true))throw new RuntimeException($decision==='paid'?'Ödeme yapılmadan önce talep onaylanmalıdır.':'Bu talep bu aşamadan ilerletilemez.');
+  $note=substr(trim($note),0,500);
+  $update=$pdo->prepare('UPDATE seller_withdrawals SET status=?,admin_note=? WHERE id=? AND status=?');
+  $update->execute([$decision,$note,$withdrawalId,$from]);
+  if($update->rowCount()!==1)throw new RuntimeException('Ödeme talebi eşzamanlı olarak değiştirildi. Sayfayı yenileyip tekrar deneyin.');
+  if($decision==='paid'){
+   $debit=$pdo->prepare("INSERT INTO seller_ledger(seller_id,order_id,withdrawal_id,entry_type,amount,status) VALUES(?,NULL,?,'withdrawal',?,'available')");
+   $debit->execute([$sellerId,$withdrawalId,-(float)$withdrawal['amount']]);
+  }
+  $event=$pdo->prepare('INSERT INTO seller_withdrawal_events(withdrawal_id,admin_user_id,from_status,to_status,note) VALUES(?,?,?,?,?)');
+  $event->execute([$withdrawalId,$adminUserId,$from,$decision,$note!==''?$note:null]);
+  if($ownsTransaction)$pdo->commit();
+ }catch(Throwable $e){if($ownsTransaction&&$pdo->inTransaction())$pdo->rollBack();throw $e;}
+}
+
 function seller_financial_summary(int $sellerId):array{
  if($sellerId<1)throw new InvalidArgumentException('Geçersiz satıcı hesabı.');
  $pdo=db();

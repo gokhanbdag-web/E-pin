@@ -36,27 +36,9 @@ elseif($resource==='sellers'&&config('business_mode')==='multi_vendor'&&$action=
 }
 elseif($resource==='seller_payments'&&config('business_mode')==='multi_vendor'&&$action==='withdrawal_review'){
  $id=(int)($_POST['id']??0);$decision=(string)($_POST['decision']??'');
- if($id<1||!in_array($decision,['approved','rejected','paid'],true))throw new RuntimeException('Geçersiz ödeme kararı.');
- $pdo=db();$pdo->beginTransaction();
- try{
-  $q=$pdo->prepare('SELECT seller_id FROM seller_withdrawals WHERE id=?');$q->execute([$id]);$sellerId=(int)$q->fetchColumn();
-  if(!$sellerId)throw new RuntimeException('Ödeme talebi bulunamadı.');
-  $sellerLock=$pdo->prepare('SELECT id FROM seller_profiles WHERE id=? FOR UPDATE');$sellerLock->execute([$sellerId]);
-  if(!$sellerLock->fetchColumn())throw new RuntimeException('Satıcı hesabı bulunamadı.');
-  $q=$pdo->prepare('SELECT * FROM seller_withdrawals WHERE id=? AND seller_id=? FOR UPDATE');$q->execute([$id,$sellerId]);$w=$q->fetch();
-  if(!$w)throw new RuntimeException('Ödeme talebi bulunamadı.');
-  $from=(string)$w['status'];$allowed=['approved'=>['pending'],'rejected'=>['pending','approved'],'paid'=>['approved']];
-  if(!in_array($from,$allowed[$decision],true))throw new RuntimeException($decision==='paid'?'Ödeme yapılmadan önce talep onaylanmalıdır.':'Bu talep bu aşamadan ilerletilemez.');
-  $note=substr(trim((string)($_POST['admin_note']??'')),0,500);
-  $update=$pdo->prepare('UPDATE seller_withdrawals SET status=?,admin_note=? WHERE id=? AND status=?');
-  $update->execute([$decision,$note,$id,$from]);
-  if($update->rowCount()!==1)throw new RuntimeException('Ödeme talebi eşzamanlı olarak değiştirildi. Sayfayı yenileyip tekrar deneyin.');
-  if($decision==='paid'){$debit=$pdo->prepare("INSERT INTO seller_ledger(seller_id,order_id,withdrawal_id,entry_type,amount,status) VALUES(?,NULL,?,'withdrawal',?,'available')");$debit->execute([$sellerId,$id,-(float)$w['amount']]);}
-  $event=$pdo->prepare('INSERT INTO seller_withdrawal_events(withdrawal_id,admin_user_id,from_status,to_status,note) VALUES(?,?,?,?,?)');
-  $event->execute([$id,(int)$_SESSION['user']['id'],$from,$decision,$note!==''?$note:null]);
-  $pdo->commit();
-  flash('success',$decision==='paid'?'Ödeme yapıldı olarak kaydedildi.':($decision==='approved'?'Ödeme talebi onaylandı.':'Ödeme talebi reddedildi.'));
- }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+ $note=substr(trim((string)($_POST['admin_note']??'')),0,500);
+ seller_review_withdrawal($id,$decision,(int)$_SESSION['user']['id'],$note);
+ flash('success',$decision==='paid'?'Ödeme yapıldı olarak kaydedildi.':($decision==='approved'?'Ödeme talebi onaylandı.':'Ödeme talebi reddedildi.'));
 }
 elseif($resource==='refunds'&&$action==='review'){$id=(int)($_POST['id']??0);$decision=(string)($_POST['decision']??'');$note=substr(trim((string)($_POST['admin_note']??'')),0,1000);if(!in_array($decision,['approved','rejected','processed'],true))throw new RuntimeException('Geçersiz iade kararı.');$pdo=db();$pdo->beginTransaction();try{$q=$pdo->prepare("SELECT r.*,o.payment_status,o.total,o.order_no FROM refund_requests r JOIN orders o ON o.id=r.order_id WHERE r.id=? FOR UPDATE");$q->execute([$id]);$r=$q->fetch();if(!$r)throw new RuntimeException('İade talebi bulunamadı.');$allowed=['requested'=>['approved','rejected'],'approved'=>['processed']];if(!in_array($decision,$allowed[$r['status']]??[],true))throw new RuntimeException('Bu iade talebi bu aşamadan ilerletilemez.');if($decision==='processed'&&$r['payment_status']!=='paid')throw new RuntimeException('Ödenmiş olmayan sipariş iade edildi olarak işaretlenemez.');if($decision==='processed'){$q=$pdo->prepare("SELECT (SELECT COUNT(*) FROM inventory_codes WHERE sold_order_id=? AND status='sold')+(SELECT COUNT(*) FROM order_deliveries WHERE order_id=?)");$q->execute([(int)$r['order_id'],(int)$r['order_id']]);if((int)$q->fetchColumn()>0)throw new RuntimeException('Dijital kod teslim edilmiş sipariş iade edildi olarak işaretlenemez.');}$pdo->prepare('UPDATE refund_requests SET status=?,admin_note=? WHERE id=?')->execute([$decision,$note,$id]);if($decision==='processed'){seller_reverse_refunded_order((int)$r['order_id']);$pdo->prepare("UPDATE orders SET status='refunded' WHERE id=?")->execute([(int)$r['order_id']]);$pdo->prepare("UPDATE payment_transactions SET status='refund_recorded' WHERE order_id=? AND status IN ('paid','success')")->execute([(int)$r['order_id']]);}$pdo->commit();flash('success',$decision==='processed'?'İade, yönetici tarafından ödeme sağlayıcısında tamamlandığı doğrulanarak kaydedildi. Otomatik sağlayıcı iadesi yapılmadı.':($decision==='approved'?'İade talebi onaylandı.':'İade talebi reddedildi.'));}catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}}
  elseif($resource==='orders'&&$action==='retry_fulfillment'){$orderId=(int)($_POST['order_id']??0);$q=db()->prepare("SELECT COUNT(*) FROM refund_requests WHERE order_id=? AND status IN ('requested','approved')");$q->execute([$orderId]);if((int)$q->fetchColumn()>0)throw new RuntimeException('İade talebi incelemedeyken teslimat yeniden başlatılamaz.');restore_paid_order_reservations($orderId);fulfill_paid_order($orderId);seller_record_paid_order($orderId);$q=db()->prepare('SELECT status FROM orders WHERE id=?');$q->execute([$orderId]);flash('success','Otomatik teslimat yeniden işlendi. Güncel sipariş durumu: '.(string)$q->fetchColumn());}

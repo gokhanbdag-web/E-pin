@@ -139,6 +139,32 @@ assert_true($requested!==false&&(float)$requested['amount']===$withdrawalCapacit
 $invalidAmountRejected=false;
 try{seller_request_withdrawal($sellerId,NAN);}catch(RuntimeException $e){$invalidAmountRejected=true;}
 assert_true($invalidAmountRejected,'Non-finite withdrawal amounts must be rejected.');
+ 
+// Exercise the same withdrawal decision service used by the admin route.
+seller_review_withdrawal($firstRequest,'approved',$userId,'Approved in integration test');
+$approvedState=$partial->prepare('SELECT status,admin_note FROM seller_withdrawals WHERE id=?');$approvedState->execute([$firstRequest]);$approvedRow=$approvedState->fetch(PDO::FETCH_ASSOC);
+assert_true($approvedRow!==false&&$approvedRow['status']==='approved'&&$approvedRow['admin_note']==='Approved in integration test','Admin approval must move a pending withdrawal to approved and persist its note.');
+seller_review_withdrawal($firstRequest,'paid',$userId,'Payout sent');
+$paidState=$partial->prepare('SELECT status,admin_note FROM seller_withdrawals WHERE id=?');$paidState->execute([$firstRequest]);$paidRow=$paidState->fetch(PDO::FETCH_ASSOC);
+assert_true($paidRow!==false&&$paidRow['status']==='paid'&&$paidRow['admin_note']==='Payout sent','Admin payout completion must move an approved withdrawal to paid.');
+$payoutCount=$partial->prepare("SELECT COUNT(*) FROM seller_ledger WHERE withdrawal_id=? AND entry_type='withdrawal'");$payoutCount->execute([$firstRequest]);
+assert_true((int)$payoutCount->fetchColumn()===1,'Completing a payout must create exactly one withdrawal ledger debit.');
+$paidEventCount=$partial->prepare("SELECT COUNT(*) FROM seller_withdrawal_events WHERE withdrawal_id=? AND to_status IN ('approved','paid')");$paidEventCount->execute([$firstRequest]);
+assert_true((int)$paidEventCount->fetchColumn()===2,'Approval and payout completion must each create an audit event.');
+$invalidTransitionRejected=false;
+try{seller_review_withdrawal($firstRequest,'rejected',$userId,'Invalid after payout');}catch(RuntimeException $e){$invalidTransitionRejected=true;}
+assert_true($invalidTransitionRejected,'A paid withdrawal must not transition to rejected.');
+$partial->prepare("INSERT INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,NULL,'sale_credit',7,'available')")->execute([$sellerId]);
+$rejectRequest=seller_request_withdrawal($sellerId,7,'Reject path test');
+$beforeReject=seller_financial_summary($sellerId)['reservedBalance'];
+seller_review_withdrawal($rejectRequest,'rejected',$userId,'Rejected in integration test');
+$rejectedState=$partial->prepare('SELECT status,admin_note FROM seller_withdrawals WHERE id=?');$rejectedState->execute([$rejectRequest]);$rejectedRow=$rejectedState->fetch(PDO::FETCH_ASSOC);
+assert_true($rejectedRow!==false&&$rejectedRow['status']==='rejected'&&$rejectedRow['admin_note']==='Rejected in integration test','Admin rejection must persist the rejected state and note.');
+$afterReject=seller_financial_summary($sellerId)['reservedBalance'];
+assert_true(abs(($beforeReject-$afterReject)-7)<0.001,'Rejecting a withdrawal must release its reserved balance.');
+$rejectEvent=$partial->prepare("SELECT from_status,to_status,admin_user_id,note FROM seller_withdrawal_events WHERE withdrawal_id=? ORDER BY id DESC LIMIT 1");$rejectEvent->execute([$rejectRequest]);$rejectAudit=$rejectEvent->fetch(PDO::FETCH_ASSOC);
+assert_true($rejectAudit!==false&&$rejectAudit['from_status']==='pending'&&$rejectAudit['to_status']==='rejected'&&(int)$rejectAudit['admin_user_id']===$userId&&$rejectAudit['note']==='Rejected in integration test','Withdrawal rejection must record its actor, transition and note.');
+
 
 require_once $root . '/app/backup.php';
 $single->exec("CREATE TABLE backup_probe(id INT AUTO_INCREMENT PRIMARY KEY,sample_text TEXT NOT NULL,payload VARBINARY(16) NOT NULL,optional_value VARCHAR(20) NULL) ENGINE=InnoDB");
