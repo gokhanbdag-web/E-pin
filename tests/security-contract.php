@@ -22,8 +22,8 @@ if (str_contains($checkout, 'ödeme bağlantısı henüz kurulmadığı')) throw
 $index = file_get_contents($root . '/index.php');
 if (!str_contains($index, '$cartQuantity+$qty')) throw new RuntimeException('Adding an item must validate the existing cart quantity plus the requested quantity against available stock.');
 if (!str_contains($index, "if(\$price===false)throw new RuntimeException('Sepetinizde artık satışta olmayan bir ürün veya seçenek var.')")) throw new RuntimeException('Coupon calculation must reject unavailable or invalid cart items instead of silently omitting them.');
-if (!str_contains($index, "SELECT id FROM inventory_codes WHERE product_id=?") || !str_contains($index, "ORDER BY id LIMIT ".$q." FOR UPDATE")) throw new RuntimeException('Checkout must lock available inventory rows before reserving codes.');
+if (!str_contains($index, "SELECT id FROM inventory_codes WHERE product_id=?") || !str_contains($index, 'ORDER BY id LIMIT ') || !str_contains($index, ' FOR UPDATE"))') throw new RuntimeException('Checkout must lock available inventory rows before reserving codes.');
 if (!str_contains($index, "status='reserved',reserved_order_id=?,reserved_until=DATE_ADD(NOW(),INTERVAL 30 MINUTE)")) throw new RuntimeException('Checkout must reserve digital codes before payment.');
 if (!str_contains($boot, "i.status='reserved' AND o.status='expired'")) throw new RuntimeException('Expired unpaid orders must release reserved digital codes.');
-if (!str_contains($boot, "coupon_quote($pdo,(string)\$_SESSION['coupon_code'],$subtotal,true)")) throw new RuntimeException('Checkout must revalidate and lock the coupon before calculating the final order total.');
+if (!str_contains($boot, 'coupon_quote($pdo,(string)$_SESSION[\'coupon_code\'],$subtotal,true)')) throw new RuntimeException('Checkout must revalidate and lock the coupon before calculating the final order total.');
 echo "Security contract checks passed.\n";
