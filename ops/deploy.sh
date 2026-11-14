@@ -48,6 +48,9 @@ git -C "$STAGING" fetch --prune origin main
 git -C "$STAGING" checkout -B main origin/main
 git -C "$STAGING" reset --hard origin/main
 
+# runuser may inherit an inaccessible /root working directory.
+cd "$STAGING"
+
 # Keep the server-side runner current without exposing it in the web root.
 install -m 750 "$STAGING/ops/deploy.sh" "$BASE/deploy.sh.next"
 mv -f "$BASE/deploy.sh.next" "$BASE/deploy.sh"
@@ -60,7 +63,7 @@ echo "KAYNAK: main @ $COMMIT"
 
 echo "KONTROL: Staging PHP dosyaları denetleniyor."
 while IFS= read -r -d '' file; do
-    "$PHP" -l "$file" >/dev/null
+    "$PHP" -n -l "$file" >/dev/null
 done < <(find "$STAGING" -type f -name '*.php' -not -path "$STAGING/.git/*" -print0)
 echo "BAŞARILI: Staging PHP sözdizimi kontrolü."
 
@@ -83,8 +86,8 @@ rsync -rlptDz \
 install -m 640 "$STAGING/deploy-hook.php" "$LIVE/deploy-hook.php"
 
 echo "KONTROL: Canlı PHP dosyaları denetleniyor."
-"$PHP" -l "$LIVE/index.php"
-"$PHP" -l "$LIVE/deploy-hook.php"
+"$PHP" -n -l "$LIVE/index.php"
+"$PHP" -n -l "$LIVE/deploy-hook.php"
 find "$LIVE" -type d -not -path "$LIVE/storage*" -not -path "$LIVE/uploads*" -exec chmod 755 {} +
 find "$LIVE" -type f -not -path "$LIVE/storage/*" -not -path "$LIVE/uploads/*" -not -path "$LIVE/config.php" -exec chmod 644 {} +
 for persistent in "$LIVE/storage" "$LIVE/uploads"; do
