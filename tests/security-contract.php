@@ -15,4 +15,8 @@ $adminSource = file_get_contents($root . '/app/admin.php');
 if (!str_contains($adminSource, 'SELECT o.payment_status,o.status,oi.id,oi.quantity,p.delivery_type FROM orders o')) throw new RuntimeException('Manual delivery must lock and inspect the order status.');
 if (!str_contains($adminSource, "in_array(" . '$item' . "['status'],['processing','partially_delivered'],true)")) throw new RuntimeException('Manual delivery must reject refunded, cancelled, expired and review orders.');
 if (!str_contains($admin, 'seller_reverse_refunded_order((int)$r[\'order_id\'])')) throw new RuntimeException('Processed refunds must reverse seller ledger entries in the same transaction.');
+$sessionCookie = substr($boot, strpos($boot, "session_set_cookie_params"), 260);
+if (!str_contains($sessionCookie, "'samesite'=>\$secure?'None':'Lax'") || !str_contains($sessionCookie, "'secure'=>\$secure")) throw new RuntimeException('HTTPS payment returns must retain the browser session with a Secure SameSite=None cookie.');
+$checkout = file_get_contents($root . '/app/views/store/checkout.php');
+if (str_contains($checkout, 'ödeme bağlantısı henüz kurulmadığı')) throw new RuntimeException('Checkout must not claim that the configured payment integrations are unavailable.');
 echo "Security contract checks passed.\n";
