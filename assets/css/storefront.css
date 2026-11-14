@@ -243,3 +243,20 @@
  .storefront-header>.header-search{grid-column:1/-1;grid-row:2}
  .storefront-header>.storefront-navigation{grid-column:1/-1;grid-row:3}
 }
+
+
+/* Admin-managed storefront logo sizing */
+.storefront-header>.brand.brand-has-logo{display:flex;align-items:center;min-width:0;max-width:100%;overflow:visible;text-overflow:clip;white-space:normal;}
+.storefront-header>.brand .storefront-logo{display:block;max-width:100%;max-height:76px;height:auto;object-fit:contain;object-position:left center;}
+@media(max-width:760px){.storefront-header>.brand.brand-has-logo{max-width:100%;}.storefront-header>.brand .storefront-logo{max-height:54px;}}
+.store-logo-settings{margin:22px 0;padding:18px;border:1px solid var(--line);border-radius:12px;background:#101a2d;}
+.store-logo-settings h2{margin:0 0 12px;}
+.store-logo-current{display:flex;align-items:center;gap:14px;min-height:100px;margin:12px 0;padding:14px;background:#0b1427;border:1px dashed var(--line);border-radius:10px;}
+.store-logo-current img{max-width:100%;}
+.store-logo-current span,.logo-size-control small{color:var(--muted);}
+.store-logo-settings input[type=file]{margin-top:8px;}
+.store-logo-settings .logo-size-control{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;}
+.store-logo-settings .logo-size-control input[type=range]{grid-column:1/-1;width:100%;}
+.store-logo-settings .logo-size-control small{grid-column:1/-1;}
+.store-logo-settings .logo-remove-option{display:flex;align-items:center;gap:9px;}
+.store-logo-settings .logo-remove-option input{width:auto;margin:0;}
