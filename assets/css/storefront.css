@@ -210,6 +210,7 @@
 .storefront-header>.header-search button svg{display:block;width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .storefront-utility-bar{width:100%;min-height:60px;background:#080e1b;border-bottom:1px solid #26334d;position:relative;z-index:30}
 .storefront-utility-bar .storefront-quick-actions{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:10px!important;width:min(1240px,calc(100% - 48px))!important;min-height:60px!important;height:auto!important;margin:0 auto!important;padding:8px 0!important;overflow:visible!important}
+.quick-logout-form{display:inline-flex!important;align-items:center!important;margin:0!important;padding:0!important}
 .storefront-utility-bar .storefront-quick-actions .quick-action{flex:0 0 42px!important;width:42px!important;min-width:42px!important;max-width:42px!important;height:42px!important;min-height:42px!important;max-height:42px!important}
 @media(min-width:761px){.storefront-header{padding-top:15px;padding-bottom:15px}.storefront-header>.header-search{max-width:340px;justify-self:start}}
 @media(max-width:760px){
