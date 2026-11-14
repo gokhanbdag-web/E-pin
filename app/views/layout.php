@@ -13,11 +13,13 @@
     <nav class="storefront-quick-actions" aria-label="Hesap ve sepet kısayolları">
         <?php foreach ($actionMenus as $action): ?>
             <?php if (($action['menu_type'] ?? '') === 'account'): ?>
-                <a class="quick-action quick-account" href="<?= e(url(!empty($_SESSION['user']) ? 'account' : 'login')) ?>" aria-label="<?= e(!empty($_SESSION['user']) ? 'Hesabım' : 'Giriş yap') ?>">
+                <?php if (!empty($_SESSION['user'])): ?>
+                <a class="quick-action quick-account" href="<?= e(url('account')) ?>" aria-label="Hesabım">
                     <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                         <path d="M20 21a8 8 0 0 0-16 0M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z"/>
                     </svg>
                 </a>
+                <?php endif; ?>
             <?php elseif (($action['menu_type'] ?? '') === 'cart'): ?>
                 <a class="quick-action quick-cart" href="<?= e(url('cart')) ?>" aria-label="Sepet, <?= (int) array_sum($_SESSION['cart'] ?? []) ?> ürün">
                     <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -28,6 +30,22 @@
             <?php endif; ?>
 
         <?php endforeach; ?>
+            <?php if (!empty($_SESSION['user'])): ?>
+            <form class="quick-logout-form" method="post" action="<?= e(url('logout')) ?>">
+                <input type="hidden" name="_token" value="<?= e(csrf_token()) ?>">
+                <button class="quick-action quick-logout" type="submit" aria-label="Çıkış yap" title="Çıkış yap">
+                    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M10 17l5-5-5-5M15 12H3M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/>
+                    </svg>
+                </button>
+            </form>
+        <?php else: ?>
+            <a class="quick-action quick-login" href="<?= e(url('login')) ?>" aria-label="Giriş yap" title="Giriş yap">
+                <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M14 17l5-5-5-5M19 12H7M12 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6"/>
+                </svg>
+            </a>
+        <?php endif; ?>
     </nav>
     </div>
 <?php endif; ?>
@@ -84,10 +102,6 @@
             <?php elseif (($_SESSION['user']['role'] ?? '') !== 'admin' && config('business_mode') === 'multi_vendor'): ?>
                 <a class="nav-link" href="<?= e(url('seller/apply')) ?>">Satıcı ol</a>
             <?php endif; ?>
-            <form class="nav-logout-form" method="post" action="<?= e(url('logout')) ?>">
-                <input type="hidden" name="_token" value="<?= e(csrf_token()) ?>">
-                <button class="nav-logout" type="submit">Çıkış</button>
-            </form>
         <?php endif; ?>
     </nav>
 </header>
