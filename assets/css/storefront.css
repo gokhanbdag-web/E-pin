@@ -147,8 +147,8 @@
 
 /* Balanced desktop header: keep the primary navigation on one clean line. */
 @media(min-width:761px){
- .storefront-header{display:grid;grid-template-columns:minmax(150px,190px) minmax(210px,280px) minmax(0,1fr);gap:clamp(12px,1.8vw,24px);padding:14px max(24px,calc((100% - 1240px)/2));}
- .storefront-header>.brand{min-width:0;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+ .storefront-header{display:grid;grid-template-columns:minmax(150px,220px) minmax(210px,280px) minmax(0,1fr);gap:clamp(12px,1.8vw,24px);padding:14px max(24px,calc((100% - 1240px)/2));}
+ .storefront-header>.brand{min-width:0;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
  .storefront-header>.header-search{min-width:0;width:100%;gap:6px;}
  .storefront-header>.header-search input{width:100%;min-width:0;}
  .storefront-navigation{min-width:0;justify-content:flex-end;flex-wrap:nowrap;gap:clamp(8px,1.15vw,16px);white-space:nowrap;}
@@ -166,7 +166,7 @@
  .nav-logout{font-size:clamp(.78rem,.88vw,.9rem);white-space:nowrap;}
 }
 @media(min-width:761px) and (max-width:1050px){
- .storefront-header{grid-template-columns:minmax(125px,160px) minmax(170px,220px) minmax(0,1fr);gap:10px;padding-inline:18px;}
+ .storefront-header{grid-template-columns:minmax(125px,180px) minmax(170px,220px) minmax(0,1fr);gap:10px;padding-inline:18px;}
  .storefront-navigation{gap:8px;}
  .storefront-navigation>.nav-link,.nav-category-menu,.nav-logout{font-size:.76rem;}
 }
