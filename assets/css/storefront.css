@@ -221,3 +221,25 @@
  .storefront-utility-bar{min-height:54px}
  .storefront-utility-bar .storefront-quick-actions{width:calc(100% - 32px)!important;min-height:54px!important;padding:7px 0!important}
 }
+
+
+/* Header desktop proportions: logo 2/12, navigation 6/12, search 4/12. */
+@media(min-width:761px){
+ .storefront-header{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,6fr) minmax(0,4fr);align-items:center;gap:clamp(10px,1.4vw,22px)}
+ .storefront-header>.brand{grid-column:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .storefront-header>.storefront-navigation{grid-column:2;min-width:0;display:flex;align-items:center;justify-content:center;gap:clamp(8px,1.1vw,18px);flex-wrap:wrap}
+ .storefront-header>.header-search{grid-column:3;width:100%;max-width:none;min-width:0;justify-self:stretch}
+ .storefront-header>.storefront-menu-toggle{display:none}
+}
+@media(min-width:761px) and (max-width:1050px){
+ .storefront-header{grid-template-columns:minmax(0,2fr) minmax(0,6fr) minmax(0,4fr);padding-inline:18px;gap:9px}
+ .storefront-navigation{gap:7px}
+ .storefront-navigation>.nav-link,.nav-category-menu{font-size:.75rem}
+}
+@media(max-width:760px){
+ .storefront-header{grid-template-columns:minmax(0,1fr) 44px}
+ .storefront-header>.brand{grid-column:1;grid-row:1}
+ .storefront-header>.storefront-menu-toggle{grid-column:2;grid-row:1}
+ .storefront-header>.header-search{grid-column:1/-1;grid-row:2}
+ .storefront-header>.storefront-navigation{grid-column:1/-1;grid-row:3}
+}
