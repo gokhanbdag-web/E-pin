@@ -65,7 +65,7 @@ done < <(find "$STAGING" -type f -name '*.php' -not -path "$STAGING/.git/*" -pri
 echo "BAŞARILI: Staging PHP sözdizimi kontrolü."
 
 echo "DAĞITIM: Dosyalar canlı dizine aktarılıyor."
-rsync -rlptDz --delete \
+rsync -rlptDz \
     --exclude='/config.php' \
     --include='/storage/.htaccess' \
     --exclude='/storage/*' \
