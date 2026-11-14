@@ -27,6 +27,11 @@
                 </a>
             <?php endif; ?>
 
+        <?php endforeach; ?>
+    </nav>
+    </div>
+<?php endif; ?>
+
 <header class="storefront-header">
     <a class="brand" href="<?= e(url()) ?>"><?= e($settings['site_title'] ?? 'E-pin') ?></a>
 
@@ -86,12 +91,6 @@
         <?php endif; ?>
     </nav>
 </header>
-
-
-        <?php endforeach; ?>
-    </nav>
-    </div>
-<?php endif; ?>
 
 <main class="container">
     <?php if ($m = flash('error')): ?>
