@@ -40,23 +40,23 @@ function has_column(PDO $pdo, string $table, string $column): bool {
 // Clean single-vendor install, followed by a second idempotent migration pass.
 $single = test_db($server, 'epin_single_test', 'single_vendor');
 app_migrate($single);
-assert_true(migration_count($single) === 2, 'Single-vendor install must apply exactly two migrations.');
+assert_true(migration_count($single) === 4, 'Single-vendor install must apply exactly two migrations.');
 assert_true(has_table($single, 'products') && has_table($single, 'inventory_codes'), 'Core and extended tables are missing.');
 assert_true(!has_table($single, 'seller_profiles'), 'Single-vendor install must not create marketplace tables.');
 app_migrate($single);
-assert_true(migration_count($single) === 2, 'Repeated single-vendor migration changed applied versions.');
+assert_true(migration_count($single) === 4, 'Repeated single-vendor migration changed applied versions.');
 
 // Clean multi-vendor install.
 $multi = test_db($server, 'epin_multi_test', 'multi_vendor');
 app_migrate($multi);
-assert_true(migration_count($multi) === 5, 'Multi-vendor install must apply all five migrations.');
+assert_true(migration_count($multi) === 7, 'Multi-vendor install must apply all five migrations.');
 assert_true(has_table($multi, 'seller_profiles') && has_table($multi, 'seller_ledger') && has_table($multi, 'seller_withdrawals') && has_table($multi, 'seller_withdrawal_events'), 'Marketplace tables are missing.');
 assert_true(has_column($multi, 'products', 'seller_id'), 'Marketplace product seller column is missing.');
 assert_true(has_index($multi, 'seller_ledger', 'uq_seller_ledger_order_entry'), 'Marketplace ledger unique index is missing.');
 assert_true(has_column($multi, 'seller_ledger', 'withdrawal_id'), 'Seller withdrawal ledger reference is missing.');
 assert_true(has_index($multi, 'seller_ledger', 'uq_seller_ledger_withdrawal_entry'), 'Seller withdrawal idempotency index is missing.');
 app_migrate($multi);
-assert_true(migration_count($multi) === 5, 'Repeated multi-vendor migration changed applied versions.');
+assert_true(migration_count($multi) === 7, 'Repeated multi-vendor migration changed applied versions.');
 
 // Simulate a partially applied marketplace migration on a legacy single-vendor database.
 // DDL before the failing unique-index step must survive and the migration must resume safely.
@@ -90,10 +90,10 @@ $keepId = (int)$partial->query('SELECT MIN(id) FROM seller_ledger')->fetchColumn
 $delete = $partial->prepare('DELETE FROM seller_ledger WHERE id=?');
 $delete->execute([$keepId]);
 db();
-assert_true(migration_count($partial) === 5, 'Marketplace migrations did not resume after the duplicate was resolved through the application bootstrap.');
+assert_true(migration_count($partial) === 7, 'Marketplace migrations did not resume after the duplicate was resolved through the application bootstrap.');
 assert_true(has_index($partial, 'seller_ledger', 'uq_seller_ledger_order_entry'), 'Resumed migration did not create the ledger unique index.');
 db();
-assert_true(migration_count($partial) === 5, 'Repeated resumed migration through the application bootstrap is not idempotent.');
+assert_true(migration_count($partial) === 7, 'Repeated resumed migration through the application bootstrap is not idempotent.');
 // A paid withdrawal must have a durable, unique ledger reference to its request.
 $partial->prepare("INSERT INTO seller_withdrawals(seller_id,amount,note) VALUES(?,5,'test payout')")->execute([$sellerId]);
 $withdrawalId=(int)$partial->lastInsertId();
