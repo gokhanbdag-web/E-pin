@@ -24,3 +24,10 @@ root.addEventListener('touchend',function(e){if(touchStart===null)return;var del
 document.addEventListener('visibilitychange',function(){if(document.hidden)stop();else start();});
 paint();start();
 })();
+(function(){'use strict';
+var viewport=document.querySelector('[data-product-slider]');if(!viewport)return;
+var previous=document.querySelector('[data-product-prev]'),next=document.querySelector('[data-product-next]');
+function step(){var card=viewport.querySelector('.product-slide');return card?card.getBoundingClientRect().width+18:280;}
+if(previous)previous.addEventListener('click',function(){viewport.scrollBy({left:-step(),behavior:'smooth'});});
+if(next)next.addEventListener('click',function(){viewport.scrollBy({left:step(),behavior:'smooth'});});
+})();
