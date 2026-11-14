@@ -56,8 +56,11 @@ app_migrate($single);
 assert_true(migration_count($single) === expected_migration_count('single_vendor'), 'Single-vendor install did not apply all migrations for its selected mode.');
 assert_true(has_table($single, 'products') && has_table($single, 'inventory_codes'), 'Core and extended tables are missing.');
 assert_true(!has_table($single, 'seller_profiles'), 'Single-vendor install must not create marketplace tables.');
+// Capture the selected mode's actual applied version count; later migrations may
+// increase this number without changing the idempotency contract.
+$singleAppliedVersions = migration_count($single);
 app_migrate($single);
-assert_true(migration_count($single) === 4, 'Repeated single-vendor migration changed applied versions.');
+assert_true(migration_count($single) === $singleAppliedVersions, 'Repeated single-vendor migration changed applied versions.');
 
 // Clean multi-vendor install.
 $multi = test_db($server, 'epin_multi_test', 'multi_vendor');
@@ -68,8 +71,9 @@ assert_true(has_column($multi, 'products', 'seller_id'), 'Marketplace product se
 assert_true(has_index($multi, 'seller_ledger', 'uq_seller_ledger_order_entry'), 'Marketplace ledger unique index is missing.');
 assert_true(has_column($multi, 'seller_ledger', 'withdrawal_id'), 'Seller withdrawal ledger reference is missing.');
 assert_true(has_index($multi, 'seller_ledger', 'uq_seller_ledger_withdrawal_entry'), 'Seller withdrawal idempotency index is missing.');
+$multiAppliedVersions = migration_count($multi);
 app_migrate($multi);
-assert_true(migration_count($multi) === 7, 'Repeated multi-vendor migration changed applied versions.');
+assert_true(migration_count($multi) === $multiAppliedVersions, 'Repeated multi-vendor migration changed applied versions.');
 
 // Simulate a partially applied marketplace migration on a legacy single-vendor database.
 // DDL before the failing unique-index step must survive and the migration must resume safely.
