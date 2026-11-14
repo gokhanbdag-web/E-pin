@@ -181,3 +181,8 @@
  .nav-logout-form{display:block;padding:10px 6px;}
  .nav-logout{padding:0;background:none;color:var(--muted);font:inherit;}
 }
+
+
+/* Account and cart shortcuts between primary navigation and hero. */
+.storefront-quick-actions{display:flex;align-items:center;justify-content:flex-end;gap:12px;width:min(1240px,calc(100% - 48px));margin:0 auto;padding:12px 0 0;position:relative;z-index:20}.quick-action{display:inline-flex;align-items:center;gap:9px;min-height:42px;padding:8px 13px;border:1px solid #34435f;border-radius:10px;background:#121d31;color:#eaf2ff;text-decoration:none;font-size:.84rem;font-weight:750;transition:border-color .2s,background .2s}.quick-action:hover{border-color:#20cdb3;background:#172b3b}.quick-action svg{width:19px;height:19px;fill:none;stroke:#6debd7;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}.quick-action b{display:grid;place-items:center;min-width:21px;height:21px;padding:0 5px;border-radius:20px;background:#20cdb3;color:#06201e;font-size:.72rem}.footer-inner{align-items:flex-start}.footer-links{justify-content:flex-end}
+@media(max-width:760px){.storefront-quick-actions{width:calc(100% - 32px);gap:8px;padding-top:10px}.quick-action{min-height:40px;padding:7px 11px;font-size:.8rem}}
