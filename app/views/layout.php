@@ -12,8 +12,12 @@
     <a class="brand" href="<?= e(url()) ?>"><?= e($settings['site_title'] ?? 'E-pin') ?></a>
 
     <form class="header-search" method="get" action="<?= e(url('search')) ?>" role="search">
-        <input type="search" name="q" value="<?= e($searchTerm ?? '') ?>" minlength="2" maxlength="80" placeholder="Oyun, ürün veya kategori ara" aria-label="Ürün ara">
-        <button type="submit">Ara</button>
+        <label class="visually-hidden" for="storefront-search">Oyun, ürün veya kategori ara</label>
+        <input id="storefront-search" type="search" name="q" value="<?= e($searchTerm ?? '') ?>" minlength="2" maxlength="80" placeholder="Oyun, ürün veya kategori ara" aria-label="Ürün ara">
+        <button type="submit" aria-label="Ara">
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10.8" cy="10.8" r="6.8"></circle><path d="m16 16 5 5"></path></svg>
+            <span>Ara</span>
+        </button>
     </form>
 
     <button class="storefront-menu-toggle" type="button" aria-label="Menüyü aç" aria-expanded="false" aria-controls="storefront-navigation">
@@ -65,6 +69,7 @@
 </header>
 
 <?php if (!empty($actionMenus)): ?>
+    <div class="storefront-utility-bar">
     <nav class="storefront-quick-actions" aria-label="Hesap ve sepet kısayolları">
         <?php foreach ($actionMenus as $action): ?>
             <?php if (($action['menu_type'] ?? '') === 'account'): ?>
@@ -83,6 +88,7 @@
             <?php endif; ?>
         <?php endforeach; ?>
     </nav>
+    </div>
 <?php endif; ?>
 
 <main class="container">
