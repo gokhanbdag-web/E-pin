@@ -25,5 +25,5 @@ if (!str_contains($index, "if(\$price===false)throw new RuntimeException('Sepeti
 if (!str_contains($index, 'SELECT id FROM inventory_codes WHERE product_id=?') || !str_contains($index, 'ORDER BY id LIMIT ') || !str_contains($index, ' FOR UPDATE");')) throw new RuntimeException('Checkout must lock available inventory rows before reserving codes.');
 if (!str_contains($index, "status='reserved',reserved_order_id=?,reserved_until=DATE_ADD(NOW(),INTERVAL 30 MINUTE)")) throw new RuntimeException('Checkout must reserve digital codes before payment.');
 if (!str_contains($boot, "i.status='reserved' AND o.status='expired'")) throw new RuntimeException('Expired unpaid orders must release reserved digital codes.');
-if (!str_contains($boot, 'coupon_quote($pdo,(string)$_SESSION[\'coupon_code\'],$subtotal,true)')) throw new RuntimeException('Checkout must revalidate and lock the coupon before calculating the final order total.');
+if (!str_contains($index, 'coupon_quote($pdo,(string)$_SESSION[\'coupon_code\'],$subtotal,true)')) throw new RuntimeException('Checkout must revalidate and lock the coupon before calculating the final order total.');
 echo "Security contract checks passed.\n";
