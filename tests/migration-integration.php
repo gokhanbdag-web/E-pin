@@ -24,6 +24,19 @@ function assert_true(bool $condition, string $message): void {
 function migration_count(PDO $pdo): int {
     return (int)$pdo->query('SELECT COUNT(*) FROM schema_migrations')->fetchColumn();
 }
+
+function expected_migration_count(string $mode): int {
+    $files = glob(dirname(__DIR__) . '/database/migrations/*.sql') ?: [];
+    sort($files, SORT_STRING);
+    $expected = 0;
+    foreach ($files as $file) {
+        $sql = file_get_contents($file);
+        if ($sql === false) throw new RuntimeException('Unable to read migration: ' . basename($file));
+        if (preg_match('/^-- @mode ([a-z_]+)\\s*$/m', $sql, $match) && $match[1] !== $mode) continue;
+        $expected++;
+    }
+    return $expected;
+}
 function has_table(PDO $pdo, string $table): bool {
     $q = $pdo->prepare('SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?');
     $q->execute([$table]); return (bool)$q->fetchColumn();
@@ -40,7 +53,7 @@ function has_column(PDO $pdo, string $table, string $column): bool {
 // Clean single-vendor install, followed by a second idempotent migration pass.
 $single = test_db($server, 'epin_single_test', 'single_vendor');
 app_migrate($single);
-assert_true(migration_count($single) === 4, 'Single-vendor install must apply exactly two migrations.');
+assert_true(migration_count($single) === expected_migration_count('single_vendor'), 'Single-vendor install did not apply all migrations for its selected mode.');
 assert_true(has_table($single, 'products') && has_table($single, 'inventory_codes'), 'Core and extended tables are missing.');
 assert_true(!has_table($single, 'seller_profiles'), 'Single-vendor install must not create marketplace tables.');
 app_migrate($single);
@@ -49,7 +62,7 @@ assert_true(migration_count($single) === 4, 'Repeated single-vendor migration ch
 // Clean multi-vendor install.
 $multi = test_db($server, 'epin_multi_test', 'multi_vendor');
 app_migrate($multi);
-assert_true(migration_count($multi) === 7, 'Multi-vendor install must apply all five migrations.');
+assert_true(migration_count($multi) === expected_migration_count('multi_vendor'), 'Multi-vendor install did not apply all migrations for its selected mode.');
 assert_true(has_table($multi, 'seller_profiles') && has_table($multi, 'seller_ledger') && has_table($multi, 'seller_withdrawals') && has_table($multi, 'seller_withdrawal_events'), 'Marketplace tables are missing.');
 assert_true(has_column($multi, 'products', 'seller_id'), 'Marketplace product seller column is missing.');
 assert_true(has_index($multi, 'seller_ledger', 'uq_seller_ledger_order_entry'), 'Marketplace ledger unique index is missing.');
@@ -90,7 +103,7 @@ $keepId = (int)$partial->query('SELECT MIN(id) FROM seller_ledger')->fetchColumn
 $delete = $partial->prepare('DELETE FROM seller_ledger WHERE id=?');
 $delete->execute([$keepId]);
 db();
-assert_true(migration_count($partial) === 7, 'Marketplace migrations did not resume after the duplicate was resolved through the application bootstrap.');
+assert_true(migration_count($partial) === expected_migration_count('multi_vendor'), 'Marketplace migrations did not resume after the duplicate was resolved through the application bootstrap.');
 assert_true(has_index($partial, 'seller_ledger', 'uq_seller_ledger_order_entry'), 'Resumed migration did not create the ledger unique index.');
 db();
 assert_true(migration_count($partial) === 7, 'Repeated resumed migration through the application bootstrap is not idempotent.');
