@@ -73,9 +73,31 @@ function payment_attempt_update_reference(int $orderId,string $provider,string $
     $q->execute([$newReference,$orderId,$provider,$oldReference]);
     if($q->rowCount()!==1) throw new RuntimeException('Ödeme oturumu işlem kaydı güncellenemedi.');
 }
-function payment_attempt_fail(int $orderId,string $provider,string $reference):void {
+function payment_mark_failed(int $orderId,string $provider,string $reference):void {
     if($reference==='') return;
-    db()->prepare("UPDATE payment_transactions SET status='failed' WHERE order_id=? AND provider=? AND provider_reference=? AND status='pending'")->execute([$orderId,$provider,$reference]);
+    $pdo=db();$pdo->beginTransaction();
+    try {
+        $q=$pdo->prepare('SELECT id,payment_status,status,coupon_code,coupon_usage_released FROM orders WHERE id=? FOR UPDATE');
+        $q->execute([$orderId]);$order=$q->fetch();
+        if(!$order){$pdo->commit();return;}
+        $q=$pdo->prepare("SELECT id,status FROM payment_transactions WHERE order_id=? AND provider=? AND provider_reference=? LIMIT 1 FOR UPDATE");
+        $q->execute([$orderId,$provider,$reference]);$attempt=$q->fetch();
+        if(!$attempt){$pdo->commit();return;}
+        if($attempt['status']==='pending')$pdo->prepare("UPDATE payment_transactions SET status='failed' WHERE id=? AND status='pending'")->execute([(int)$attempt['id']]);
+        $q=$pdo->prepare("SELECT COUNT(*) FROM payment_transactions WHERE order_id=? AND status='pending'");
+        $q->execute([$orderId]);$hasPending=(int)$q->fetchColumn()>0;
+        if(!$hasPending&&$order['payment_status']!=='paid'&&in_array($order['status'],['pending','payment_failed'],true)){
+            $pdo->prepare("UPDATE inventory_codes SET status='available',reserved_order_id=NULL,reserved_until=NULL WHERE reserved_order_id=? AND status='reserved'")->execute([$orderId]);
+            if(!empty($order['coupon_code'])&&(int)$order['coupon_usage_released']===0){
+                $pdo->prepare('UPDATE coupons SET usage_count=GREATEST(usage_count-1,0) WHERE code=?')->execute([$order['coupon_code']]);
+            }
+            $pdo->prepare("UPDATE orders SET payment_status='failed',status='payment_failed',coupon_usage_released=1 WHERE id=? AND payment_status<>'paid' AND status IN ('pending','payment_failed')")->execute([$orderId]);
+        }
+        $pdo->commit();
+    } catch(Throwable $e) {if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+}
+function payment_attempt_fail(int $orderId,string $provider,string $reference):void {
+    payment_mark_failed($orderId,$provider,$reference);
 }
 function payment_mark_paid(int $orderId,string $provider,string $reference=''):void {
     $pdo=db();$shouldFulfill=false;$reviewReason='';
