@@ -8,6 +8,25 @@
     <link rel="stylesheet" href="<?= e(url('assets/css/storefront.css')) ?>?v=<?= is_file($storefrontCss) ? (int) filemtime($storefrontCss) : '1' ?>">
 </head>
 <body class="storefront-body">
+<?php if (!empty($actionMenus)): ?>
+    <div class="storefront-utility-bar">
+    <nav class="storefront-quick-actions" aria-label="Hesap ve sepet kısayolları">
+        <?php foreach ($actionMenus as $action): ?>
+            <?php if (($action['menu_type'] ?? '') === 'account'): ?>
+                <a class="quick-action quick-account" href="<?= e(url(!empty($_SESSION['user']) ? 'account' : 'login')) ?>" aria-label="<?= e(!empty($_SESSION['user']) ? 'Hesabım' : 'Giriş yap') ?>">
+                    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M20 21a8 8 0 0 0-16 0M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z"/>
+                    </svg>
+                </a>
+            <?php elseif (($action['menu_type'] ?? '') === 'cart'): ?>
+                <a class="quick-action quick-cart" href="<?= e(url('cart')) ?>" aria-label="Sepet, <?= (int) array_sum($_SESSION['cart'] ?? []) ?> ürün">
+                    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                        <path d="M3 3h2l2.2 11.2a2 2 0 0 0 2 1.6h8.9a2 2 0 0 0 2-1.6L22 7H6M10 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm8 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"/>
+                    </svg>
+                    <b><?= (int) array_sum($_SESSION['cart'] ?? []) ?></b>
+                </a>
+            <?php endif; ?>
+
 <header class="storefront-header">
     <a class="brand" href="<?= e(url()) ?>"><?= e($settings['site_title'] ?? 'E-pin') ?></a>
 
@@ -68,24 +87,7 @@
     </nav>
 </header>
 
-<?php if (!empty($actionMenus)): ?>
-    <div class="storefront-utility-bar">
-    <nav class="storefront-quick-actions" aria-label="Hesap ve sepet kısayolları">
-        <?php foreach ($actionMenus as $action): ?>
-            <?php if (($action['menu_type'] ?? '') === 'account'): ?>
-                <a class="quick-action quick-account" href="<?= e(url(!empty($_SESSION['user']) ? 'account' : 'login')) ?>" aria-label="<?= e(!empty($_SESSION['user']) ? 'Hesabım' : 'Giriş yap') ?>">
-                    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                        <path d="M20 21a8 8 0 0 0-16 0M12 13a5 5 0 1 0 0-10 5 5 0 0 0 0 10Z"/>
-                    </svg>
-                </a>
-            <?php elseif (($action['menu_type'] ?? '') === 'cart'): ?>
-                <a class="quick-action quick-cart" href="<?= e(url('cart')) ?>" aria-label="Sepet, <?= (int) array_sum($_SESSION['cart'] ?? []) ?> ürün">
-                    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                        <path d="M3 3h2l2.2 11.2a2 2 0 0 0 2 1.6h8.9a2 2 0 0 0 2-1.6L22 7H6M10 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm8 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"/>
-                    </svg>
-                    <b><?= (int) array_sum($_SESSION['cart'] ?? []) ?></b>
-                </a>
-            <?php endif; ?>
+
         <?php endforeach; ?>
     </nav>
     </div>
