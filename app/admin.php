@@ -169,7 +169,30 @@ elseif($resource==='demo'&&$action==='refresh_showcase'){
  if(!$parts||!isset($parts['scheme'],$parts['host'])||!in_array(strtolower($parts['scheme']),['https','http'],true)||isset($parts['user'])||isset($parts['pass'])||isset($parts['query'])||isset($parts['fragment'])||filter_var($siteUrl,FILTER_VALIDATE_URL)===false)throw new RuntimeException('Geçerli Site adresini https://alanadiniz.com biçiminde girin; alt klasör kullanıyorsanız sonuna ekleyin.');
  $st=db()->prepare('INSERT INTO settings(setting_key,setting_value) VALUES(?,?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)');
  foreach(['site_url','site_title','home_heading','home_description','footer_text'] as $k)$st->execute([$k,$k==='site_url'?$siteUrl:trim((string)($_POST[$k]??''))]);
+ $logoWidth=max(80,min(360,(int)($_POST['site_logo_width']??180)));
+ $st->execute(['site_logo_width',(string)$logoWidth]);
+ $currentLogo=(string)(db()->query("SELECT setting_value FROM settings WHERE setting_key='site_logo'")->fetchColumn()?:'');
+ $newLogo=null;
+ if(!empty($_FILES['site_logo_file'])&&($_FILES['site_logo_file']['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_NO_FILE){
+  $file=$_FILES['site_logo_file'];
+  if(($file['error']??UPLOAD_ERR_OK)!==UPLOAD_ERR_OK)throw new RuntimeException('Logo yüklenirken hata oluştu.');
+  if((int)($file['size']??0)>5242880)throw new RuntimeException('Logo dosyası en fazla 5 MB olabilir.');
+  if(!is_uploaded_file((string)$file['tmp_name']))throw new RuntimeException('Geçersiz logo yüklemesi.');
+  $finfo=new finfo(FILEINFO_MIME_TYPE);$mime=$finfo->file((string)$file['tmp_name']);
+  $types=['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp'];
+  $imageInfo=@getimagesize((string)$file['tmp_name']);
+  if(!isset($types[$mime])||!$imageInfo||$imageInfo[0]>6000||$imageInfo[1]>4000)throw new RuntimeException('Logo için en fazla 6000×4000 piksel JPG, PNG veya WEBP dosyası yükleyin.');
+  $uploadDir=APP_ROOT.'/uploads/branding';
+  if(!is_dir($uploadDir)&&!mkdir($uploadDir,0755,true)&&!is_dir($uploadDir))throw new RuntimeException('Logo klasörü oluşturulamadı.');
+  $fileName=bin2hex(random_bytes(16)).'.'.$types[$mime];
+  if(!move_uploaded_file((string)$file['tmp_name'],$uploadDir.'/'.$fileName))throw new RuntimeException('Logo sunucuya kaydedilemedi.');
+  $newLogo='uploads/branding/'.$fileName;
+ } elseif(isset($_POST['remove_site_logo'])) {
+  $newLogo='';
+ }
+ if($newLogo!==null)$st->execute(['site_logo',$newLogo]);
  flash('success','Mağaza ayarları kaydedildi.');
+
 }
  elseif(isset($meta[$resource])&&$action==='save'){$m=$meta[$resource];$id=(int)($_POST['id']??0);$data=[];$uploadedImage=null;
 if($resource==='products'&&!empty($_FILES['image_file'])&&($_FILES['image_file']['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_NO_FILE){
