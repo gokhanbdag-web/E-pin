@@ -1,6 +1,15 @@
 <?php
 declare(strict_types=1);
 require __DIR__.'/app/bootstrap.php';
+if(isset($_GET['brand_logo'])){
+ $logoName=(string)$_GET['brand_logo'];
+ if(!preg_match('/^[a-f0-9]{32}\\.(?:jpg|png|webp)$/i',$logoName)){http_response_code(404);exit;}
+ $logoPath=APP_ROOT.'/uploads/branding/'.$logoName;
+ if(!is_file($logoPath)||!is_readable($logoPath)){http_response_code(404);header('Cache-Control: no-store');exit;}
+ $finfo=new finfo(FILEINFO_MIME_TYPE);$mime=$finfo->file($logoPath);
+ if(!in_array($mime,['image/jpeg','image/png','image/webp'],true)){http_response_code(404);exit;}
+ header('Content-Type: '.$mime);header('Content-Length: '.(string)filesize($logoPath));header('X-Content-Type-Options: nosniff');header('Cache-Control: public, max-age=86400');readfile($logoPath);exit;
+}
 require_once APP_ROOT.'/app/payments.php';
 if(!is_file(APP_ROOT.'/config.php')){require APP_ROOT.'/install/index.php';exit;}
 $path=app_route_path_from_uri((string)($_SERVER['REQUEST_URI']??'/'),app_base_path());
