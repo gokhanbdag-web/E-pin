@@ -106,7 +106,7 @@ db();
 assert_true(migration_count($partial) === expected_migration_count('multi_vendor'), 'Marketplace migrations did not resume after the duplicate was resolved through the application bootstrap.');
 assert_true(has_index($partial, 'seller_ledger', 'uq_seller_ledger_order_entry'), 'Resumed migration did not create the ledger unique index.');
 db();
-assert_true(migration_count($partial) === 7, 'Repeated resumed migration through the application bootstrap is not idempotent.');
+assert_true(migration_count($partial) === expected_migration_count('multi_vendor'), 'Repeated resumed migration through the application bootstrap is not idempotent.');
 // A paid withdrawal must have a durable, unique ledger reference to its request.
 $partial->prepare("INSERT INTO seller_withdrawals(seller_id,amount,note) VALUES(?,5,'test payout')")->execute([$sellerId]);
 $withdrawalId=(int)$partial->lastInsertId();
