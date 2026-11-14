@@ -2,6 +2,7 @@ Options -Indexes -MultiViews
 DirectoryIndex index.php
 <IfModule mod_rewrite.c>
 RewriteEngine On
+RewriteRule ^uploads/branding/([a-f0-9]{32}\.(?:jpg|png|webp))$ index.php?brand_logo=$1 [L,QSA,NC]
 RewriteRule ^(app|storage)/ - [F,L]
 RewriteRule ^config\.php$ - [F,L]
 RewriteCond %{REQUEST_FILENAME} -f [OR]
