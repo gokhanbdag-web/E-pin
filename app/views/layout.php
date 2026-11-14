@@ -51,7 +51,7 @@
 <?php endif; ?>
 
 <header class="storefront-header">
-    <a class="brand" href="<?= e(url()) ?>"><?= e($settings['site_title'] ?? 'E-pin') ?></a>
+    <a class="brand<?= !empty($settings['site_logo'])?' brand-has-logo':'' ?>" href="<?= e(url()) ?>" aria-label="<?= e($settings['site_title'] ?? 'Ana sayfa') ?>"><?php if(!empty($settings['site_logo'])): ?><img class="storefront-logo" src="<?= e(url($settings['site_logo'])) ?>" alt="<?= e($settings['site_title'] ?? 'Mağaza logosu') ?>" style="width:<?= max(80,min(360,(int)($settings['site_logo_width']??180))) ?>px"><?php else: ?><?= e($settings['site_title'] ?? 'E-pin') ?><?php endif; ?></a>
 
     <button class="storefront-menu-toggle" type="button" aria-label="Menüyü aç" aria-expanded="false" aria-controls="storefront-navigation">
         <span></span><span></span><span></span>
