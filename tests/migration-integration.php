@@ -307,4 +307,58 @@ $appPdo->beginTransaction();seller_reverse_refunded_order($sellerPaidOrder);$app
 $refusedFulfillment=false;try{fulfill_paid_order($sellerPaidOrder);}catch(RuntimeException $e){$refusedFulfillment=str_contains($e->getMessage(),'sipariş durumunda');}
 assert_true($refusedFulfillment,'A refunded order must be blocked from late fulfilment.');
 assert_true($partial->query("SELECT status FROM orders WHERE id={$sellerPaidOrder}")->fetchColumn()==='refunded','A fulfilment race must not overwrite the refunded order state.');
-echo "MySQL migration integration checks passed: single-vendor, multi-vendor, idempotency, and interrupted migration recovery.\n";
+// End-to-end database checks for coupon arithmetic, stock reservation and expiry release.
+$partial->prepare("INSERT INTO categories(name,slug,status) VALUES('Digital Test','digital-test','active')")->execute();
+$categoryId=(int)$partial->lastInsertId();
+$partial->prepare("INSERT INTO products(category_id,name,slug,price,delivery_type,status) VALUES(?, 'Reservation Test Product','reservation-test-product',100,'automatic','active')")->execute([$categoryId]);
+$productId=(int)$partial->lastInsertId();
+
+$partial->prepare("INSERT INTO coupons(code,discount_type,discount_value,min_order,max_discount,usage_limit,usage_count,status) VALUES('PERCENTTEST','percent',25,50,15,10,0,'active'),('FIXEDTEST','fixed',150,0,NULL,10,0,'active'),('LIMITTEST','percent',10,0,NULL,1,1,'active')")->execute();
+$percentQuote=coupon_quote($partial,'PERCENTTEST',100,true);
+assert_true(abs($percentQuote['discount']-15.0)<0.001&&abs($percentQuote['total']-85.0)<0.001,'Percentage coupon must honor the configured maximum discount.');
+$fixedQuote=coupon_quote($partial,'FIXEDTEST',100,true);
+assert_true(abs($fixedQuote['discount']-100.0)<0.001&&abs($fixedQuote['total'])<0.001,'Fixed coupon discount must be capped at the cart subtotal.');
+$minimumRejected=false;
+try{coupon_quote($partial,'PERCENTTEST',49.99);}catch(RuntimeException $e){$minimumRejected=str_contains($e->getMessage(),'en az');}
+assert_true($minimumRejected,'Coupon minimum-order requirement must be enforced.');
+$usageLimitRejected=false;
+try{coupon_quote($partial,'LIMITTEST',100);}catch(RuntimeException $e){$usageLimitRejected=str_contains($e->getMessage(),'limiti dolmuş');}
+assert_true($usageLimitRejected,'Coupon usage limit must be enforced.');
+
+// Reserve two unique stock codes in one transaction. A second order cannot see or claim them.
+$partial->prepare("INSERT INTO inventory_codes(product_id,code_ciphertext,code_nonce,code_tag,code_hash,status) VALUES(?, 'cipher-a','nonce-a','tag-a',?,'available'),(?, 'cipher-b','nonce-b','tag-b',?,'available')")->execute([$productId,hash('sha256','TEST-CODE-A'),$productId,hash('sha256','TEST-CODE-B')]);
+$stockOrderNo='EP-RESERVE-'.strtoupper(bin2hex(random_bytes(3)));
+$partial->prepare("INSERT INTO orders(user_id,order_no,subtotal,total,status,payment_status) VALUES(?,?,200,200,'pending','unpaid')")->execute([$userId,$stockOrderNo]);
+$stockOrderId=(int)$partial->lastInsertId();
+$partial->beginTransaction();
+$stockLock=$partial->prepare("SELECT id FROM inventory_codes WHERE product_id=? AND status='available' ORDER BY id LIMIT 2 FOR UPDATE");
+$stockLock->execute([$productId]);$reservedIds=$stockLock->fetchAll(PDO::FETCH_COLUMN);
+assert_true(count($reservedIds)===2,'Checkout reservation must lock the requested number of available stock codes.');
+$reserveStock=$partial->prepare("UPDATE inventory_codes SET status='reserved',reserved_order_id=?,reserved_until=DATE_ADD(NOW(),INTERVAL 30 MINUTE) WHERE id=? AND status='available'");
+foreach($reservedIds as $stockId)$reserveStock->execute([$stockOrderId,(int)$stockId]);
+$partial->commit();
+$availableAfterReserve=$partial->prepare("SELECT COUNT(*) FROM inventory_codes WHERE product_id=? AND status='available'");
+$availableAfterReserve->execute([$productId]);
+assert_true((int)$availableAfterReserve->fetchColumn()===0,'Reserved stock must immediately disappear from available inventory.');
+$secondOrderLock=$partial->prepare("SELECT id FROM inventory_codes WHERE product_id=? AND status='available' ORDER BY id LIMIT 1 FOR UPDATE");
+$secondOrderLock->execute([$productId]);
+assert_true($secondOrderLock->fetchColumn()===false,'A second order must not be able to reserve codes already held by the first order.');
+
+// Expiry must release stock and reverse exactly one coupon usage, idempotently.
+$partial->prepare("INSERT INTO coupons(code,discount_type,discount_value,usage_limit,usage_count,status) VALUES('EXPIREDRESERVE','fixed',10,10,1,'active')")->execute();
+$expiredCouponOrderNo='EP-EXPIRED-'.strtoupper(bin2hex(random_bytes(3)));
+$partial->prepare("INSERT INTO orders(user_id,order_no,subtotal,discount_total,coupon_code,coupon_usage_released,total,status,payment_status,created_at) VALUES(?,?,100,10,'EXPIREDRESERVE',0,90,'pending','unpaid',DATE_SUB(NOW(),INTERVAL 2 HOUR))")->execute([$userId,$expiredCouponOrderNo]);
+$expiredOrderId=(int)$partial->lastInsertId();
+$partial->prepare("INSERT INTO inventory_codes(product_id,code_ciphertext,code_nonce,code_tag,code_hash,status,reserved_order_id,reserved_until) VALUES(?, 'cipher-expired','nonce-expired','tag-expired',?,'reserved',?,DATE_SUB(NOW(),INTERVAL 1 MINUTE))")->execute([$productId,hash('sha256','TEST-CODE-EXPIRED'),$expiredOrderId]);
+$partial->beginTransaction();expire_stale_orders($partial);$partial->commit();
+$expiredState=$partial->prepare("SELECT status,coupon_usage_released FROM orders WHERE id=?");$expiredState->execute([$expiredOrderId]);$expiredRow=$expiredState->fetch(PDO::FETCH_ASSOC);
+assert_true($expiredRow!==false&&$expiredRow['status']==='expired'&&(int)$expiredRow['coupon_usage_released']===1,'Expired unpaid orders must be marked expired and their coupon usage release recorded.');
+$releasedStock=$partial->prepare("SELECT status,reserved_order_id,reserved_until FROM inventory_codes WHERE code_hash=?");$releasedStock->execute([hash('sha256','TEST-CODE-EXPIRED')]);$releasedRow=$releasedStock->fetch(PDO::FETCH_ASSOC);
+assert_true($releasedRow!==false&&$releasedRow['status']==='available'&&$releasedRow['reserved_order_id']===null&&$releasedRow['reserved_until']===null,'Expired order inventory must return to available stock.');
+$releasedCoupon=(int)$partial->query("SELECT usage_count FROM coupons WHERE code='EXPIREDRESERVE'")->fetchColumn();
+assert_true($releasedCoupon===0,'Expiring an unpaid order must restore its coupon usage count.');
+$partial->beginTransaction();expire_stale_orders($partial);$partial->commit();
+$releasedCouponAgain=(int)$partial->query("SELECT usage_count FROM coupons WHERE code='EXPIREDRESERVE'")->fetchColumn();
+assert_true($releasedCouponAgain===0,'Repeated expiry cleanup must not decrement coupon usage more than once.');
+
+echo "MySQL integration checks passed: migrations, coupons, stock reservation, expiry release and marketplace ledger.\n";
