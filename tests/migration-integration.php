@@ -365,7 +365,8 @@ assert_true($releasedCouponAgain===0,'Repeated expiry cleanup must not decrement
 $partial->prepare("INSERT INTO orders(user_id,order_no,subtotal,total,status,payment_status) VALUES(?, 'TEST-IYZICO-SUCCESS',25,25,'pending','unpaid')")->execute([$userId]);
 $iyzicoSuccessOrder=(int)$partial->lastInsertId();
 $partial->prepare("INSERT INTO order_items(order_id,product_id,discount_amount,product_name,quantity,unit_price) VALUES(?,?,0,'iyzico automatic item',1,25)")->execute([$iyzicoSuccessOrder,$productId]);
-$partial->prepare("INSERT INTO inventory_codes(product_id,code_ciphertext,code_nonce,code_tag,code_hash,status,reserved_order_id,reserved_until) VALUES(?, 'cipher-iyzico','nonce-iyzico','tag-iyzico',?,'reserved',?,DATE_ADD(NOW(),INTERVAL 30 MINUTE))")->execute([$productId,hash('sha256','TEST-IYZICO-CODE'),$iyzicoSuccessOrder]);
+[$iyzicoCipher,$iyzicoNonce,$iyzicoTag,$iyzicoHash]=inventory_encrypt('TEST-IYZICO-CODE');
+$partial->prepare("INSERT INTO inventory_codes(product_id,code_ciphertext,code_nonce,code_tag,code_hash,status,reserved_order_id,reserved_until) VALUES(?,?,?,?,?,'reserved',?,DATE_ADD(NOW(),INTERVAL 30 MINUTE))")->execute([$productId,$iyzicoCipher,$iyzicoNonce,$iyzicoTag,$iyzicoHash,$iyzicoSuccessOrder]);
 $partial->prepare("INSERT INTO payment_transactions(order_id,provider,provider_reference,amount,status) VALUES(?,'iyzico','TEST-IYZICO-TOKEN-SUCCESS',25,'pending')")->execute([$iyzicoSuccessOrder]);
 $deliveryBeforePayment=$partial->prepare('SELECT COUNT(*) FROM order_deliveries WHERE order_id=? AND inventory_code_id IS NOT NULL');$deliveryBeforePayment->execute([$iyzicoSuccessOrder]);
 assert_true((int)$deliveryBeforePayment->fetchColumn()===0,'A digital delivery record must not exist before payment is verified.');
