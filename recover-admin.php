@@ -17,6 +17,11 @@ header('X-Frame-Options: DENY');
 header('Content-Security-Policy: default-src \'none\'; style-src \'unsafe-inline\'; form-action \'self\'; base-uri \'none\'; frame-ancestors \'none\'');
 header('X-Robots-Tag: noindex, nofollow, noarchive');
 
+if (is_file($root . '/storage/admin-recovery.disabled')) {
+    http_response_code(410);
+    exit('Tek kullanımlık yönetici kurtarma aracı daha önce kullanılmış ve devre dışı bırakılmış.');
+}
+
 if (!is_file($configFile)) {
     http_response_code(404);
     exit('Uygulama henüz kurulmamış.');
