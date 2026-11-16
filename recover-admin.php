@@ -112,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-if (is_file($root . '/storage/admin-recovery.disabled')) {
+if (!$success && is_file($root . '/storage/admin-recovery.disabled')) {
     http_response_code(410);
     exit('Tek kullanımlık yönetici kurtarma aracı daha önce kullanılmış ve devre dışı bırakılmış.');
 }
