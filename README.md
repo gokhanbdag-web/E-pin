@@ -61,3 +61,11 @@ GitHub Actions checks PHP syntax, root/subdirectory routing, migration contracts
 ## Canonical site URL and payment callbacks
 - After installation, open Admin → Store Settings and enter the full canonical URL, including the subdirectory if the app is installed below the domain root (for example `https://example.com/shop`).
 - Payment callback URLs are generated only from this saved value; untrusted request `Host` headers are not used. HTTPS is recommended for all production payment traffic.
+
+
+## One-time administrator recovery
+- For an already-installed store, open `/recover-admin.php` over HTTPS.
+- Enter the exact database host, database name, database username and password configured during installation, plus the email of an existing active administrator.
+- The tool updates only that existing admin account's display name and password; it cannot create an account or elevate a non-admin user.
+- The recovery entry point removes itself after a successful reset. If the host prevents self-deletion, it writes a disable marker and refuses subsequent access.
+- Use this only when you control the hosting account and database credentials. Delete the file manually if recovery is abandoned.
