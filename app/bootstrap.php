@@ -88,10 +88,10 @@ function seller_record_paid_order(int $orderId):void{
   if(in_array($order['status'],['cancelled','expired','refunded'],true))throw new RuntimeException('İptal veya iade edilmiş sipariş için satıcı kazancı oluşturulamaz.');
   $creditStatus=$order['status']==='delivered'?'available':'pending';
   $q=$pdo->prepare("SELECT seller_id,quantity,unit_price,seller_commission_rate,discount_amount FROM order_items WHERE order_id=? AND seller_id IS NOT NULL ORDER BY seller_id FOR UPDATE");$q->execute([$orderId]);$groups=[];
-  foreach($q->fetchAll() as $it){$sid=(int)$it['seller_id'];$gross=max(0,(float)$it['unit_price']*(int)$it['quantity']-(float)($it['discount_amount']??0));$commission=$gross*max(0,min(100,(float)$it['seller_commission_rate']))/100;if(!isset($groups[$sid]))$groups[$sid]=['net'=>0.0,'commission'=>0.0];$groups[$sid]['net']+=$gross-$commission;$groups[$sid]['commission']+=$commission;}
+  foreach($q->fetchAll() as $it){$sid=(int)$it['seller_id'];$gross=max(0,(float)$it['unit_price']*(int)$it['quantity']-(float)($it['discount_amount']??0));$commission=$gross*max(0,min(100,(float)$it['seller_commission_rate']))/100;if(!isset($groups[$sid]))$groups[$sid]=['gross'=>0.0,'commission'=>0.0];$groups[$sid]['gross']+=$gross;$groups[$sid]['commission']+=$commission;}
   $credit=$pdo->prepare("INSERT IGNORE INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,?,'sale_credit',?,?)");
   $fee=$pdo->prepare("INSERT IGNORE INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,?,'platform_commission',?,'settled')");
-  foreach($groups as $sid=>$v){$credit->execute([(int)$sid,$orderId,round($v['net'],2),$creditStatus]);$fee->execute([(int)$sid,$orderId,-round($v['commission'],2)]);if($creditStatus==='available')$pdo->prepare("UPDATE seller_ledger SET status='available' WHERE order_id=? AND seller_id=? AND entry_type='sale_credit' AND status='pending'")->execute([$orderId,(int)$sid]);}
+  foreach($groups as $sid=>$v){$grossTotal=round($v['gross'],2);$commissionTotal=round($v['commission'],2);$sellerNet=round($grossTotal-$commissionTotal,2);$credit->execute([(int)$sid,$orderId,$sellerNet,$creditStatus]);$fee->execute([(int)$sid,$orderId,-$commissionTotal]);if($creditStatus==='available')$pdo->prepare("UPDATE seller_ledger SET status='available' WHERE order_id=? AND seller_id=? AND entry_type='sale_credit' AND status='pending'")->execute([$orderId,(int)$sid]);}
   if($ownsTransaction)$pdo->commit();
  }catch(Throwable $e){if($ownsTransaction&&$pdo->inTransaction())$pdo->rollBack();throw $e;}
 }

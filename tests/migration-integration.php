@@ -317,6 +317,17 @@ $partial->prepare("INSERT INTO payment_transactions(order_id,provider,provider_r
 payment_mark_paid($sellerPaidOrder,'paytr','TEST-SELLER-LEDGER-PAY');
 $sellerCredit=$partial->prepare("SELECT amount,status FROM seller_ledger WHERE order_id=? AND seller_id=? AND entry_type='sale_credit'");$sellerCredit->execute([$sellerPaidOrder,$sellerId]);$sellerCreditRow=$sellerCredit->fetch(PDO::FETCH_ASSOC);
 assert_true($sellerCreditRow!==false&&(float)$sellerCreditRow['amount']===18.0,'Successful marketplace payment must create the seller credit before fulfillment can race with a refund.');
+
+// Commission and seller credit must reconcile exactly to the gross order-item amount at cent precision.
+$partial->prepare("INSERT INTO orders(user_id,order_no,total,status,payment_status) VALUES(?,?,?,'processing','paid')")->execute([$userId,'TEST-SELLER-ROUNDING',0.05]);
+$roundingOrder=(int)$partial->lastInsertId();
+$partial->prepare("INSERT INTO order_items(order_id,product_id,seller_id,seller_commission_rate,discount_amount,product_name,quantity,unit_price) VALUES(?,NULL,?,10,0,'Rounding item',1,0.05)")->execute([$roundingOrder,$sellerId]);
+seller_record_paid_order($roundingOrder);
+$roundingRows=$partial->prepare("SELECT entry_type,amount FROM seller_ledger WHERE order_id=? AND seller_id=? AND entry_type IN ('sale_credit','platform_commission') ORDER BY entry_type");$roundingRows->execute([$roundingOrder,$sellerId]);$roundingEntries=$roundingRows->fetchAll(PDO::FETCH_KEY_PAIR);
+assert_true((float)($roundingEntries['sale_credit']??0)===0.04&&(float)($roundingEntries['platform_commission']??0)===-0.01,'Seller net and platform commission must round to the original gross amount without creating or losing a cent.');
+seller_record_paid_order($roundingOrder);
+$roundingCount=$partial->prepare("SELECT COUNT(*) FROM seller_ledger WHERE order_id=? AND seller_id=? AND entry_type IN ('sale_credit','platform_commission')");$roundingCount->execute([$roundingOrder,$sellerId]);
+assert_true((int)$roundingCount->fetchColumn()===2,'Repeated seller accounting must not duplicate rounded credit or commission entries.');
 // A refund committed before fulfilment must never be overwritten or delivered afterward.
 $appPdo->beginTransaction();seller_reverse_refunded_order($sellerPaidOrder);$appPdo->prepare("UPDATE orders SET status='refunded' WHERE id=?")->execute([$sellerPaidOrder]);$appPdo->commit();
 $refusedFulfillment=false;try{fulfill_paid_order($sellerPaidOrder);}catch(RuntimeException $e){$refusedFulfillment=str_contains($e->getMessage(),'sipariş durumunda');}
