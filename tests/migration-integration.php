@@ -170,10 +170,25 @@ $payoutCount=$partial->prepare("SELECT COUNT(*) FROM seller_ledger WHERE withdra
 assert_true((int)$payoutCount->fetchColumn()===1,'Completing a payout must create exactly one withdrawal ledger debit.');
 $paidEventCount=$partial->prepare("SELECT COUNT(*) FROM seller_withdrawal_events WHERE withdrawal_id=? AND to_status IN ('approved','paid')");$paidEventCount->execute([$firstRequest]);
 assert_true((int)$paidEventCount->fetchColumn()===2,'Approval and payout completion must each create an audit event.');
+
+// A refund or chargeback after a withdrawal request must not allow the reserved payout to overdraw the seller ledger.
+$partial->prepare("INSERT INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,NULL,'sale_credit',10,'available')")->execute([$sellerId]);
+$reservedBeforeExposedRequest=seller_financial_summary($sellerId)['reservedBalance'];
+$exposedRequest=seller_request_withdrawal($sellerId,8,'Refund race payout test');
+seller_review_withdrawal($exposedRequest,'approved',$userId,'Approve while funds are available');
+$partial->prepare("INSERT INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,NULL,'refund_debit',-100,'available')")->execute([$sellerId]);
+$insufficientPayoutBlocked=false;
+try{seller_review_withdrawal($exposedRequest,'paid',$userId,'Should not pay after refund');}catch(RuntimeException $e){$insufficientPayoutBlocked=str_contains($e->getMessage(),'bekleyen ödeme taleplerini');}
+assert_true($insufficientPayoutBlocked,'An approved withdrawal must not be paid when a later refund makes total reserved payouts exceed the ledger balance.');
+$stillApproved=$partial->prepare('SELECT status FROM seller_withdrawals WHERE id=?');$stillApproved->execute([$exposedRequest]);
+assert_true($stillApproved->fetchColumn()==='approved','A payout blocked by insufficient post-refund balance must remain approved.');
+seller_review_withdrawal($exposedRequest,'rejected',$userId,'Release payout after refund');
+assert_true(abs(seller_financial_summary($sellerId)['reservedBalance']-$reservedBeforeExposedRequest)<0.001,'Rejecting an underfunded payout must release exactly its own reservation.');
+
 $invalidTransitionRejected=false;
 try{seller_review_withdrawal($firstRequest,'rejected',$userId,'Invalid after payout');}catch(RuntimeException $e){$invalidTransitionRejected=true;}
 assert_true($invalidTransitionRejected,'A paid withdrawal must not transition to rejected.');
-$partial->prepare("INSERT INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,NULL,'sale_credit',7,'available')")->execute([$sellerId]);
+$partial->prepare("INSERT INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,NULL,'sale_credit',100,'available')")->execute([$sellerId]);
 $rejectRequest=seller_request_withdrawal($sellerId,7,'Reject path test');
 $beforeReject=seller_financial_summary($sellerId)['reservedBalance'];
 seller_review_withdrawal($rejectRequest,'rejected',$userId,'Rejected in integration test');
