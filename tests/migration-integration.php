@@ -367,13 +367,26 @@ $iyzicoSuccessOrder=(int)$partial->lastInsertId();
 $partial->prepare("INSERT INTO order_items(order_id,product_id,discount_amount,product_name,quantity,unit_price) VALUES(?,?,0,'iyzico automatic item',1,25)")->execute([$iyzicoSuccessOrder,$productId]);
 $partial->prepare("INSERT INTO inventory_codes(product_id,code_ciphertext,code_nonce,code_tag,code_hash,status,reserved_order_id,reserved_until) VALUES(?, 'cipher-iyzico','nonce-iyzico','tag-iyzico',?,'reserved',?,DATE_ADD(NOW(),INTERVAL 30 MINUTE))")->execute([$productId,hash('sha256','TEST-IYZICO-CODE'),$iyzicoSuccessOrder]);
 $partial->prepare("INSERT INTO payment_transactions(order_id,provider,provider_reference,amount,status) VALUES(?,'iyzico','TEST-IYZICO-TOKEN-SUCCESS',25,'pending')")->execute([$iyzicoSuccessOrder]);
+$deliveryBeforePayment=$partial->prepare('SELECT COUNT(*) FROM order_deliveries WHERE order_id=? AND inventory_code_id IS NOT NULL');$deliveryBeforePayment->execute([$iyzicoSuccessOrder]);
+assert_true((int)$deliveryBeforePayment->fetchColumn()===0,'A digital delivery record must not exist before payment is verified.');
+
 payment_mark_paid($iyzicoSuccessOrder,'iyzico','TEST-IYZICO-TOKEN-SUCCESS');
 $iyzicoSuccessState=$partial->prepare('SELECT payment_status,status FROM orders WHERE id=?');$iyzicoSuccessState->execute([$iyzicoSuccessOrder]);$iyzicoSuccessRow=$iyzicoSuccessState->fetch(PDO::FETCH_ASSOC);
 assert_true($iyzicoSuccessRow!==false&&$iyzicoSuccessRow['payment_status']==='paid'&&$iyzicoSuccessRow['status']==='delivered','A verified iyzico payment must mark the order paid and automatically deliver its reserved digital code.');
 $iyzicoCode=$partial->prepare("SELECT status,sold_order_id,reserved_order_id FROM inventory_codes WHERE code_hash=?");$iyzicoCode->execute([hash('sha256','TEST-IYZICO-CODE')]);$iyzicoCodeRow=$iyzicoCode->fetch(PDO::FETCH_ASSOC);
+$deliveryRecord=$partial->prepare('SELECT d.order_id,d.order_item_id,d.inventory_code_id,d.code_ciphertext,d.code_nonce,d.code_tag FROM order_deliveries d WHERE d.order_id=? AND d.inventory_code_id IS NOT NULL');$deliveryRecord->execute([$iyzicoSuccessOrder]);$deliveryRow=$deliveryRecord->fetch(PDO::FETCH_ASSOC);
+assert_true($deliveryRow!==false&&(int)$deliveryRow['order_id']===$iyzicoSuccessOrder&&(int)$deliveryRow['inventory_code_id']>0,'Successful payment must create a durable delivery record linked to the exact order and inventory code.');
+assert_true(inventory_decrypt($deliveryRow)==='TEST-IYZICO-CODE','The encrypted delivery record must decrypt to the purchased digital code for the customer order view.');
+$deliveryOwner=$partial->prepare('SELECT COUNT(*) FROM orders WHERE id=? AND user_id=?');$deliveryOwner->execute([$iyzicoSuccessOrder,$userId]);
+assert_true((int)$deliveryOwner->fetchColumn()===1,'The purchaser must own the order whose delivery record is displayed.');
+$deliveryOtherUser=$partial->prepare('SELECT COUNT(*) FROM orders WHERE id=? AND user_id=?');$deliveryOtherUser->execute([$iyzicoSuccessOrder,99999999]);
+assert_true((int)$deliveryOtherUser->fetchColumn()===0,'A different account must not be able to access the delivered order.');
+
 assert_true($iyzicoCodeRow!==false&&$iyzicoCodeRow['status']==='sold'&&(int)$iyzicoCodeRow['sold_order_id']===$iyzicoSuccessOrder&&$iyzicoCodeRow['reserved_order_id']===null,'Successful iyzico fulfilment must convert the reserved code to sold.');
 payment_mark_paid($iyzicoSuccessOrder,'iyzico','TEST-IYZICO-TOKEN-SUCCESS');
 assert_true((int)$partial->query("SELECT COUNT(*) FROM inventory_codes WHERE code_hash='".hash('sha256','TEST-IYZICO-CODE')."' AND status='sold'")->fetchColumn()===1,'Repeated successful iyzico callback must not deliver a code twice.');
+assert_true((int)$partial->query("SELECT COUNT(*) FROM order_deliveries WHERE order_id=".$iyzicoSuccessOrder." AND inventory_code_id IS NOT NULL")->fetchColumn()===1,'Repeated successful callback must not create duplicate delivery records.');
+
 
 // iyzico failure: release reserved stock and coupon usage once; retries must remain idempotent.
 $partial->prepare("INSERT INTO coupons(code,discount_type,discount_value,usage_limit,usage_count,status) VALUES('IYZFAIL10','fixed',10,10,1,'active')")->execute();
