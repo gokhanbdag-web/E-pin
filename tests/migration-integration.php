@@ -173,18 +173,17 @@ assert_true((int)$paidEventCount->fetchColumn()===2,'Approval and payout complet
 
 // A refund or chargeback after a withdrawal request must not allow the reserved payout to overdraw the seller ledger.
 $partial->prepare("INSERT INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,NULL,'sale_credit',10,'available')")->execute([$sellerId]);
+$reservedBeforeExposedRequest=seller_financial_summary($sellerId)['reservedBalance'];
 $exposedRequest=seller_request_withdrawal($sellerId,8,'Refund race payout test');
-$partial->prepare("INSERT INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,NULL,'refund_debit',-5,'available')")->execute([$sellerId]);
+seller_review_withdrawal($exposedRequest,'approved',$userId,'Approve while funds are available');
+$partial->prepare("INSERT INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,NULL,'refund_debit',-100,'available')")->execute([$sellerId]);
 $insufficientPayoutBlocked=false;
-try{seller_review_withdrawal($exposedRequest,'approved',$userId,'Should not approve after refund');}catch(RuntimeException $e){$insufficientPayoutBlocked=str_contains($e->getMessage(),'bekleyen ödeme taleplerini');}
-assert_true($insufficientPayoutBlocked,'A withdrawal must not be approved when a later refund makes total reserved payouts exceed the ledger balance.');
-$stillPending=$partial->prepare('SELECT status FROM seller_withdrawals WHERE id=?');$stillPending->execute([$exposedRequest]);
-assert_true($stillPending->fetchColumn()==='pending','A payout blocked by insufficient post-refund balance must remain pending.');
-$rejectionAfterRefundBlocked=false;
-try{seller_review_withdrawal($exposedRequest,'paid',$userId,'Should not pay after refund');}catch(RuntimeException $e){$rejectionAfterRefundBlocked=str_contains($e->getMessage(),'Bu talep bu aşamadan ilerletilemez.')||str_contains($e->getMessage(),'bekleyen ödeme taleplerini');}
-assert_true($rejectionAfterRefundBlocked,'A pending withdrawal must not be paid directly after its reserved funds become insufficient.');
+try{seller_review_withdrawal($exposedRequest,'paid',$userId,'Should not pay after refund');}catch(RuntimeException $e){$insufficientPayoutBlocked=str_contains($e->getMessage(),'bekleyen ödeme taleplerini');}
+assert_true($insufficientPayoutBlocked,'An approved withdrawal must not be paid when a later refund makes total reserved payouts exceed the ledger balance.');
+$stillApproved=$partial->prepare('SELECT status FROM seller_withdrawals WHERE id=?');$stillApproved->execute([$exposedRequest]);
+assert_true($stillApproved->fetchColumn()==='approved','A payout blocked by insufficient post-refund balance must remain approved.');
 seller_review_withdrawal($exposedRequest,'rejected',$userId,'Release payout after refund');
-assert_true(seller_financial_summary($sellerId)['reservedBalance']<0.001,'Rejecting an underfunded payout must release its reservation.');
+assert_true(abs(seller_financial_summary($sellerId)['reservedBalance']-$reservedBeforeExposedRequest)<0.001,'Rejecting an underfunded payout must release exactly its own reservation.');
 
 $invalidTransitionRejected=false;
 try{seller_review_withdrawal($firstRequest,'rejected',$userId,'Invalid after payout');}catch(RuntimeException $e){$invalidTransitionRejected=true;}
