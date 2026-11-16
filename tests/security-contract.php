@@ -39,3 +39,5 @@ $ordersView = file_get_contents($root . '/app/views/admin/manage.php');
 if (!str_contains($ordersView, 'foreach(($orderRows??[]) as $o)')) throw new RuntimeException('Orders view must safely handle a missing orderRows variable.');
 if (!str_contains($ordersView, 'if(empty($orderRows))')) throw new RuntimeException('Orders view must show the empty state when there are no orders.');
 if (!str_contains($adminSource, '$orderRows=[];$orderDetail=null;$orderDetailItems=[];')) throw new RuntimeException('Admin controller must initialize order data before rendering the orders view.');
+
+if (!str_contains($adminSource, "if(isset(\$meta[\$resource])&&\$resource!=='backup')")) throw new RuntimeException('Backup page must not enter the generic resource-table query with an empty table name.');
