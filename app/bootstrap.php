@@ -181,6 +181,7 @@ function fulfill_paid_order(int $orderId):void{
   if(!$order||$order['payment_status']!=='paid')throw new RuntimeException('Ödeme onayı bulunmayan sipariş teslim edilemez.');
   if($order['status']==='delivered'){$pdo->commit();return;}
   if(!in_array($order['status'],['processing','partially_delivered'],true))throw new RuntimeException('Bu sipariş durumunda otomatik teslimat yapılamaz.');
+  $refund=$pdo->prepare("SELECT status FROM refund_requests WHERE order_id=? AND status IN ('requested','approved') ORDER BY id DESC LIMIT 1 FOR UPDATE");$refund->execute([$orderId]);if($refund->fetchColumn())throw new RuntimeException('İade talebi incelemedeyken otomatik teslimat yapılamaz.');
   $st=$pdo->prepare("SELECT oi.id AS order_item_id,oi.product_id,oi.variant_id,oi.quantity,p.delivery_type FROM order_items oi LEFT JOIN products p ON p.id=oi.product_id WHERE oi.order_id=? ORDER BY oi.id");$st->execute([$orderId]);$hasManual=false;$hasAutomatic=false;
   foreach($st->fetchAll() as $item){
    if(($item['delivery_type']??'')!=='automatic'){$hasManual=true;continue;}
