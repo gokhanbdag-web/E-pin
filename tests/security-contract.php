@@ -34,3 +34,8 @@ if (!str_contains($recovery, "\$account['role'] !== 'admin'")) throw new Runtime
 if (!str_contains($recovery, 'password_hash($newPassword, PASSWORD_DEFAULT)')) throw new RuntimeException('Admin recovery must store a password hash.');
 if (!str_contains($recovery, 'unlink(__FILE__)')) throw new RuntimeException('Admin recovery must remove its entry point after success.');
 if (!str_contains($recovery, 'HTTPS') || !str_contains($recovery, 'strlen($newPassword) < 12')) throw new RuntimeException('Admin recovery must require HTTPS and a strong password.');
+
+$ordersView = file_get_contents($root . '/app/views/admin/manage.php');
+if (!str_contains($ordersView, 'foreach(($orderRows??[]) as $o)')) throw new RuntimeException('Orders view must safely handle a missing orderRows variable.');
+if (!str_contains($ordersView, 'if(empty($orderRows))')) throw new RuntimeException('Orders view must show the empty state when there are no orders.');
+if (!str_contains($adminSource, '$orderRows=[];$orderDetail=null;$orderDetailItems=[];')) throw new RuntimeException('Admin controller must initialize order data before rendering the orders view.');
