@@ -406,4 +406,42 @@ payment_attempt_fail($iyzicoFailedOrder,'iyzico','TEST-IYZICO-TOKEN-FAIL');
 assert_true((int)$partial->query("SELECT usage_count FROM coupons WHERE code='IYZFAIL10'")->fetchColumn()===0,'Repeated failed iyzico callback must not release coupon usage twice.');
 assert_true((int)$partial->query("SELECT COUNT(*) FROM inventory_codes WHERE code_hash='".hash('sha256','TEST-IYZICO-FAILED-CODE')."' AND status='available'")->fetchColumn()===1,'Repeated failed iyzico callback must leave released stock unchanged.');
 
+// A paid manual-review order must be recoverable after stock is replenished.
+$partial->prepare("INSERT INTO categories(name,slug,status) VALUES('Retry Test','retry-test','active')")->execute();
+$retryCategoryId=(int)$partial->lastInsertId();
+$partial->prepare("INSERT INTO products(category_id,name,slug,price,delivery_type,status) VALUES(?, 'Retry Delivery Product','retry-delivery-product',40,'automatic','active')")->execute([$retryCategoryId]);
+$retryProductId=(int)$partial->lastInsertId();
+$partial->prepare("INSERT INTO orders(user_id,order_no,subtotal,total,status,payment_status) VALUES(?, 'TEST-RETRY-FULFILMENT',80,80,'manual_review','paid')")->execute([$userId]);
+$retryOrderId=(int)$partial->lastInsertId();
+$partial->prepare("INSERT INTO order_items(order_id,product_id,discount_amount,product_name,quantity,unit_price) VALUES(?,?,0,'retry automatic item',2,40)")->execute([$retryOrderId,$retryProductId]);
+[$retryCipherA,$retryNonceA,$retryTagA,$retryHashA]=inventory_encrypt('TEST-RETRY-CODE-A');
+$partial->prepare("INSERT INTO inventory_codes(product_id,code_ciphertext,code_nonce,code_tag,code_hash,status) VALUES(?,?,?,?,?,'available')")->execute([$retryProductId,$retryCipherA,$retryNonceA,$retryTagA,$retryHashA]);
+
+$insufficientRetryStock=false;
+try { restore_paid_order_reservations($retryOrderId); } catch (RuntimeException $e) {
+    $insufficientRetryStock=str_contains($e->getMessage(),'Yeterli boş stok yok');
+}
+assert_true($insufficientRetryStock,'Retry reservation must fail clearly when the full quantity is not available.');
+$retryState=$partial->prepare('SELECT status FROM orders WHERE id=?');$retryState->execute([$retryOrderId]);
+assert_true($retryState->fetchColumn()==='manual_review','A failed stock restoration must leave the order in manual review.');
+$retryStock=$partial->prepare("SELECT SUM(status='available'),SUM(status='reserved') FROM inventory_codes WHERE product_id=?");$retryStock->execute([$retryProductId]);$retryStockCounts=$retryStock->fetch(PDO::FETCH_NUM);
+assert_true((int)$retryStockCounts[0]===1&&(int)$retryStockCounts[1]===0,'Insufficient-stock retry must roll back every partial reservation.');
+
+[$retryCipherB,$retryNonceB,$retryTagB,$retryHashB]=inventory_encrypt('TEST-RETRY-CODE-B');
+$partial->prepare("INSERT INTO inventory_codes(product_id,code_ciphertext,code_nonce,code_tag,code_hash,status) VALUES(?,?,?,?,?,'available')")->execute([$retryProductId,$retryCipherB,$retryNonceB,$retryTagB,$retryHashB]);
+restore_paid_order_reservations($retryOrderId);
+$retryState->execute([$retryOrderId]);
+assert_true($retryState->fetchColumn()==='processing','Successful stock restoration must move a paid manual-review order back to processing.');
+$retryStock->execute([$retryProductId]);$retryStockCounts=$retryStock->fetch(PDO::FETCH_NUM);
+assert_true((int)$retryStockCounts[0]===0&&(int)$retryStockCounts[1]===2,'Successful retry must reserve the complete ordered quantity.');
+fulfill_paid_order($retryOrderId);
+$retryState->execute([$retryOrderId]);
+assert_true($retryState->fetchColumn()==='delivered','A restored paid order must complete automatic fulfilment.');
+$retryDeliveries=$partial->prepare('SELECT COUNT(*) FROM order_deliveries WHERE order_id=? AND inventory_code_id IS NOT NULL');$retryDeliveries->execute([$retryOrderId]);
+assert_true((int)$retryDeliveries->fetchColumn()===2,'Retry fulfilment must create one durable delivery record per purchased code.');
+restore_paid_order_reservations($retryOrderId);
+fulfill_paid_order($retryOrderId);
+$retryDeliveries->execute([$retryOrderId]);
+assert_true((int)$retryDeliveries->fetchColumn()===2,'Repeated retry must not create duplicate delivery records.');
+
 echo "MySQL integration checks passed: migrations, coupons, stock reservation, expiry release, marketplace ledger and iyzico payment fulfilment.\n";
