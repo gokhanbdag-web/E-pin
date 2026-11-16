@@ -148,6 +148,11 @@ function seller_review_withdrawal(int $withdrawalId,string $decision,int $adminU
   if(!$withdrawal)throw new RuntimeException('Ödeme talebi bulunamadı.');
   $from=(string)$withdrawal['status'];$allowed=['approved'=>['pending'],'rejected'=>['pending','approved'],'paid'=>['approved']];
   if(!in_array($from,$allowed[$decision],true))throw new RuntimeException($decision==='paid'?'Ödeme yapılmadan önce talep onaylanmalıdır.':'Bu talep bu aşamadan ilerletilemez.');
+  if(in_array($decision,['approved','paid'],true)){
+   $balanceQuery=$pdo->prepare("SELECT COALESCE(SUM(amount),0) FROM seller_ledger WHERE seller_id=? AND status='available'");$balanceQuery->execute([$sellerId]);$ledgerBalance=(float)$balanceQuery->fetchColumn();
+   $reservedQuery=$pdo->prepare("SELECT COALESCE(SUM(amount),0) FROM seller_withdrawals WHERE seller_id=? AND status IN ('pending','approved')");$reservedQuery->execute([$sellerId]);$reservedBalance=(float)$reservedQuery->fetchColumn();
+   if($ledgerBalance+0.00001<$reservedBalance)throw new RuntimeException('Satıcının güncel kullanılabilir bakiyesi bekleyen ödeme taleplerini karşılamıyor. Önce bakiye ve iade kayıtlarını uzlaştırın.');
+  }
   $note=substr(trim($note),0,500);
   $update=$pdo->prepare('UPDATE seller_withdrawals SET status=?,admin_note=? WHERE id=? AND status=?');
   $update->execute([$decision,$note,$withdrawalId,$from]);
