@@ -29,8 +29,8 @@ if (!str_contains($index, 'coupon_quote($pdo,(string)$_SESSION[\'coupon_code\'],
 echo "Security contract checks passed.\n";
 
 $recovery = file_get_contents($root . '/recover-admin.php');
-if (!str_contains($recovery, "hash_equals((string)$config[$key], $value)")) throw new RuntimeException('Admin recovery must verify the supplied database credentials against the installed config.');
-if (!str_contains($recovery, "$account['role'] !== 'admin'")) throw new RuntimeException('Admin recovery must never promote a non-admin account.');
-if (!str_contains($recovery, "password_hash($newPassword, PASSWORD_DEFAULT)")) throw new RuntimeException('Admin recovery must store a password hash.');
-if (!str_contains($recovery, "unlink(__FILE__)")) throw new RuntimeException('Admin recovery must remove its entry point after success.');
-if (!str_contains($recovery, "HTTPS") || !str_contains($recovery, "strlen($newPassword) < 12")) throw new RuntimeException('Admin recovery must require HTTPS and a strong password.');
+if (!str_contains($recovery, 'hash_equals((string)$config[$key], $value)')) throw new RuntimeException('Admin recovery must verify the supplied database credentials against the installed config.');
+if (!str_contains($recovery, "\$account['role'] !== 'admin'")) throw new RuntimeException('Admin recovery must never promote a non-admin account.');
+if (!str_contains($recovery, 'password_hash($newPassword, PASSWORD_DEFAULT)')) throw new RuntimeException('Admin recovery must store a password hash.');
+if (!str_contains($recovery, 'unlink(__FILE__)')) throw new RuntimeException('Admin recovery must remove its entry point after success.');
+if (!str_contains($recovery, 'HTTPS') || !str_contains($recovery, 'strlen($newPassword) < 12')) throw new RuntimeException('Admin recovery must require HTTPS and a strong password.');
