@@ -444,4 +444,24 @@ fulfill_paid_order($retryOrderId);
 $retryDeliveries->execute([$retryOrderId]);
 assert_true((int)$retryDeliveries->fetchColumn()===2,'Repeated retry must not create duplicate delivery records.');
 
+// A pending refund request must block every direct fulfilment/retry entry point.
+$refundGuardOrderNo='TEST-REFUND-GUARD-'.strtoupper(bin2hex(random_bytes(3)));
+$partial->prepare("INSERT INTO orders(user_id,order_no,subtotal,total,status,payment_status) VALUES(?,?,40,40,'processing','paid')")->execute([$userId,$refundGuardOrderNo]);
+$refundGuardOrderId=(int)$partial->lastInsertId();
+$partial->prepare("INSERT INTO order_items(order_id,product_id,discount_amount,product_name,quantity,unit_price) VALUES(?,?,0,'refund guard item',1,40)")->execute([$refundGuardOrderId,$retryProductId]);
+[$guardCipher,$guardNonce,$guardTag,$guardHash]=inventory_encrypt('TEST-REFUND-GUARD-CODE');
+$partial->prepare("INSERT INTO inventory_codes(product_id,code_ciphertext,code_nonce,code_tag,code_hash,status,reserved_order_id,reserved_until) VALUES(?,?,?,?,?,'reserved',?,DATE_ADD(NOW(),INTERVAL 30 MINUTE))")->execute([$retryProductId,$guardCipher,$guardNonce,$guardTag,$guardHash,$refundGuardOrderId]);
+$partial->prepare("INSERT INTO refund_requests(order_id,user_id,reason,status) VALUES(?,?, 'Customer requested a refund before delivery.','requested')")->execute([$refundGuardOrderId,$userId]);
+$refundBlocked=false;
+try { fulfill_paid_order($refundGuardOrderId); } catch (RuntimeException $e) {
+    $refundBlocked=str_contains($e->getMessage(),'İade talebi incelemedeyken');
+}
+assert_true($refundBlocked,'Direct fulfilment must be blocked while a refund request is pending.');
+$refundGuardState=$partial->prepare('SELECT status FROM orders WHERE id=?');$refundGuardState->execute([$refundGuardOrderId]);
+assert_true($refundGuardState->fetchColumn()==='processing','A refund-blocked order must keep its pre-delivery status.');
+$refundGuardStock=$partial->prepare('SELECT status,sold_order_id,reserved_order_id FROM inventory_codes WHERE code_hash=?');$refundGuardStock->execute([$guardHash]);$refundGuardRow=$refundGuardStock->fetch(PDO::FETCH_ASSOC);
+assert_true($refundGuardRow!==false&&$refundGuardRow['status']==='reserved'&&$refundGuardRow['sold_order_id']===null&&(int)$refundGuardRow['reserved_order_id']===$refundGuardOrderId,'A refund-blocked fulfilment must leave its reserved code untouched.');
+$refundGuardDelivery=$partial->prepare('SELECT COUNT(*) FROM order_deliveries WHERE order_id=?');$refundGuardDelivery->execute([$refundGuardOrderId]);
+assert_true((int)$refundGuardDelivery->fetchColumn()===0,'A refund-blocked fulfilment must not create a delivery record.');
+
 echo "MySQL integration checks passed: migrations, coupons, stock reservation, expiry release, marketplace ledger and iyzico payment fulfilment.\n";
