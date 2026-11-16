@@ -188,7 +188,7 @@ assert_true(abs(seller_financial_summary($sellerId)['reservedBalance']-$reserved
 $invalidTransitionRejected=false;
 try{seller_review_withdrawal($firstRequest,'rejected',$userId,'Invalid after payout');}catch(RuntimeException $e){$invalidTransitionRejected=true;}
 assert_true($invalidTransitionRejected,'A paid withdrawal must not transition to rejected.');
-$partial->prepare("INSERT INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,NULL,'sale_credit',7,'available')")->execute([$sellerId]);
+$partial->prepare("INSERT INTO seller_ledger(seller_id,order_id,entry_type,amount,status) VALUES(?,NULL,'sale_credit',100,'available')")->execute([$sellerId]);
 $rejectRequest=seller_request_withdrawal($sellerId,7,'Reject path test');
 $beforeReject=seller_financial_summary($sellerId)['reservedBalance'];
 seller_review_withdrawal($rejectRequest,'rejected',$userId,'Rejected in integration test');
