@@ -24,6 +24,8 @@ $required = [
     '-- @add-column products seller_id',
     '-- @add-foreign-key products fk_product_seller seller_id seller_profiles id SET NULL',
     '-- @unique-index payment_transactions uq_payment_provider_reference',
+    '-- @add-column order_deliveries inventory_code_id BIGINT UNSIGNED NULL',
+    '-- @unique-index order_deliveries uq_delivery_inventory_code',
     '-- @unique-index seller_ledger uq_seller_ledger_order_entry',
     '-- @add-column seller_ledger withdrawal_id BIGINT UNSIGNED NULL',
     '-- @unique-index seller_ledger uq_seller_ledger_withdrawal_entry',
