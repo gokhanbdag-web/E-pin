@@ -1,0 +1,2 @@
+-- @add-column order_deliveries inventory_code_id BIGINT UNSIGNED NULL
+-- @unique-index order_deliveries uq_delivery_inventory_code inventory_code_id
