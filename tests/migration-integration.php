@@ -283,6 +283,32 @@ $callbackUrl = absolute_url('payment/iyzico-callback');
 assert_true($callbackUrl === 'https://shop.example.test/subdir/payment/iyzico-callback', 'Payment callback URL must ignore untrusted Host headers and preserve the configured subdirectory.');
 require_once $root . '/app/payments.php';
 payment_attempt_reserve($orderId, 'paytr', 10.00, 'TEST-PAYMENT-ATTEMPT-1');
+// Payment callback transactions serialize on both the order and provider-attempt rows.
+$partial->beginTransaction();
+$partial->prepare('SELECT id FROM orders WHERE id=? FOR UPDATE')->execute([$orderId]);
+$lockProbe->beginTransaction();
+$orderCallbackLockBlocked=false;
+try{$lockProbe->prepare('SELECT id FROM orders WHERE id=? FOR UPDATE NOWAIT')->execute([$orderId]);}
+catch(PDOException $e){$orderCallbackLockBlocked=(int)($e->errorInfo[1]??0)===3572;}
+$lockProbe->rollBack();
+assert_true($orderCallbackLockBlocked,'A concurrent payment callback must wait for the order lock before changing payment state.');
+$partial->commit();
+$lockProbe->beginTransaction();
+$lockProbe->prepare('SELECT id FROM orders WHERE id=? FOR UPDATE NOWAIT')->execute([$orderId]);
+$lockProbe->commit();
+
+$partial->beginTransaction();
+$partial->prepare("SELECT id FROM payment_transactions WHERE order_id=? AND provider='paytr' AND provider_reference=? FOR UPDATE")->execute([$orderId,'TEST-PAYMENT-ATTEMPT-1']);
+$lockProbe->beginTransaction();
+$paymentAttemptLockBlocked=false;
+try{$lockProbe->prepare("SELECT id FROM payment_transactions WHERE order_id=? AND provider='paytr' AND provider_reference=? FOR UPDATE NOWAIT")->execute([$orderId,'TEST-PAYMENT-ATTEMPT-1']);}
+catch(PDOException $e){$paymentAttemptLockBlocked=(int)($e->errorInfo[1]??0)===3572;}
+$lockProbe->rollBack();
+assert_true($paymentAttemptLockBlocked,'A concurrent payment callback must not change a provider attempt while it is being finalized.');
+$partial->commit();
+$lockProbe->beginTransaction();
+$lockProbe->prepare("SELECT id FROM payment_transactions WHERE order_id=? AND provider='paytr' AND provider_reference=? FOR UPDATE NOWAIT")->execute([$orderId,'TEST-PAYMENT-ATTEMPT-1']);
+$lockProbe->commit();
 $blockedDuplicate = false;
 try { payment_attempt_reserve($orderId, 'iyzico', 10.00, 'TEST-PAYMENT-ATTEMPT-2'); } catch (RuntimeException $e) {
     $blockedDuplicate = str_contains($e->getMessage(), 'bekleyen bir ödeme oturumu');
