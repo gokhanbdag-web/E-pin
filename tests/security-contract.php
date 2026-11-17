@@ -41,3 +41,15 @@ if (!str_contains($ordersView, 'if(empty($orderRows))')) throw new RuntimeExcept
 if (!str_contains($adminSource, '$orderRows=[];$orderDetail=null;$orderDetailItems=[];')) throw new RuntimeException('Admin controller must initialize order data before rendering the orders view.');
 
 if (!str_contains($adminSource, "if(isset(\$meta[\$resource])&&\$resource!=='backup')")) throw new RuntimeException('Backup page must not enter the generic resource-table query with an empty table name.');
+
+
+$backupSource = file_get_contents($root . '/app/backup.php');
+if (!str_contains($backupSource, 'function restore_database_backup(PDO $pdo')) throw new RuntimeException('Database restore entry point is missing.');
+if (!str_contains($backupSource, "str_starts_with(\$sql, '-- E-pin database backup')")) throw new RuntimeException('Restore must accept only E-pin backup files.');
+if (!str_contains($backupSource, "SHOW FULL TABLES")) throw new RuntimeException('Restore must refuse non-empty databases.');
+if (!str_contains($backupSource, '$size > $maxBytes')) throw new RuntimeException('Restore must enforce an upload size limit.');
+if (!str_contains($backupSource, 'Yedek dosyasında izin verilmeyen SQL komutu bulundu.')) throw new RuntimeException('Restore must reject SQL statements outside the export format.');
+if (!str_contains($backupSource, 'isset($tablesCreated[$m[1]])')) throw new RuntimeException('Restore inserts must be restricted to tables created by the same backup.');
+if (!str_contains($backupSource, 'E-pin restore cleanup failed')) throw new RuntimeException('Restore must attempt cleanup after a failed import.');
+if (!str_contains($adminSource, "if($resource==='backup'&&$action==='restore')")) throw new RuntimeException('Admin backup restore action is missing.');
+if (!str_contains($view, 'enctype="multipart/form-data"') || !str_contains($view, 'name="backup_file"')) throw new RuntimeException('Backup restore upload form is missing.');
