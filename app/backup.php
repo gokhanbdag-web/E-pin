@@ -62,3 +62,56 @@ function stream_database_backup(PDO $pdo): never
     foreach (database_backup_chunks($pdo) as $chunk) { echo $chunk; if (function_exists('flush')) flush(); }
     exit;
 }
+
+
+/** Restore an E-pin SQL export only into a completely empty database. */
+function restore_database_backup(PDO $pdo, string $filePath, int $maxBytes = 33554432): int
+{
+    if (!is_file($filePath) || !is_readable($filePath)) throw new RuntimeException('Yedek dosyası okunamadı.');
+    $size = filesize($filePath);
+    if ($size === false || $size < 32 || $size > $maxBytes) throw new RuntimeException('Yedek dosyası boş veya izin verilen 32 MB sınırını aşıyor.');
+    $sql = file_get_contents($filePath);
+    if (!is_string($sql) || !str_starts_with($sql, '-- E-pin database backup')) throw new RuntimeException('Dosya E-pin tarafından oluşturulmuş geçerli bir SQL yedeği değil.');
+    if ($pdo->query('SHOW FULL TABLES')->fetchAll(PDO::FETCH_NUM)) throw new RuntimeException('Geri yükleme yalnızca tamamen boş bir veritabanına yapılabilir. Mevcut mağaza verilerinin üzerine yazılmaz.');
+
+    $statements = []; $buffer = ''; $quote = ''; $escaped = false; $lineComment = false; $blockComment = false;
+    $length = strlen($sql);
+    for ($i = 0; $i < $length; $i++) {
+        $ch = $sql[$i]; $next = $i + 1 < $length ? $sql[$i + 1] : '';
+        if ($lineComment) { if ($ch === "\n") { $lineComment = false; $buffer .= "\n"; } continue; }
+        if ($blockComment) { if ($ch === '*' && $next === '/') { $blockComment = false; $i++; } continue; }
+        if ($quote !== '') {
+            $buffer .= $ch;
+            if ($escaped) { $escaped = false; continue; }
+            if ($ch === '\\') { $escaped = true; continue; }
+            if ($ch === $quote) { if ($next === $quote && $quote !== chr(96)) { $buffer .= $next; $i++; } else $quote = ''; }
+            continue;
+        }
+        if (($ch === '-' && $next === '-' && ($i + 2 >= $length || ctype_space($sql[$i + 2]))) || $ch === '#') { $lineComment = true; if ($ch === '-') $i++; continue; }
+        if ($ch === '/' && $next === '*') { $blockComment = true; $i++; continue; }
+        if ($ch === "'" || $ch === '"' || $ch === chr(96)) { $quote = $ch; $buffer .= $ch; continue; }
+        if ($ch === ';') { $statement = trim($buffer); if ($statement !== '') $statements[] = $statement; $buffer = ''; continue; }
+        $buffer .= $ch;
+    }
+    if ($quote !== '' || $blockComment || trim($buffer) !== '') throw new RuntimeException('SQL yedeğinde tamamlanmamış ifade bulundu.');
+
+    $tablesCreated = [];
+    $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
+    try {
+        foreach ($statements as $statement) {
+            if (preg_match('/^SET\s+FOREIGN_KEY_CHECKS\s*=\s*[01]$/i', $statement) || preg_match("/^SET\s+SQL_MODE\s*=\s*'[^']*'$/i", $statement)) { $pdo->exec($statement); continue; }
+            if (preg_match('/^DROP TABLE IF EXISTS \x60([A-Za-z0-9_]+)\x60$/i', $statement, $m)) { $tablesCreated[$m[1]] = true; $pdo->exec($statement); continue; }
+            if (preg_match('/^CREATE TABLE \x60([A-Za-z0-9_]+)\x60\s*\(/is', $statement, $m)) { $tablesCreated[$m[1]] = true; $pdo->exec($statement); continue; }
+            if (preg_match('/^INSERT INTO \x60([A-Za-z0-9_]+)\x60\s*\(/is', $statement)) { $pdo->exec($statement); continue; }
+            throw new RuntimeException('Yedek dosyasında izin verilmeyen SQL komutu bulundu.');
+        }
+        if (!$tablesCreated) throw new RuntimeException('Yedekte geri yüklenecek tablo bulunamadı.');
+        $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
+        return count($tablesCreated);
+    } catch (Throwable $e) {
+        try { foreach (array_keys($tablesCreated) as $table) if (preg_match('/^[A-Za-z0-9_]+$/', $table)) $pdo->exec('DROP TABLE IF EXISTS ' . chr(96) . $table . chr(96)); }
+        catch (Throwable $cleanupError) { error_log('E-pin restore cleanup failed: ' . $cleanupError->getMessage()); }
+        try { $pdo->exec('SET FOREIGN_KEY_CHECKS=1'); } catch (Throwable $ignored) {}
+        throw new RuntimeException('Geri yükleme tamamlanamadı. Boş hedef veritabanında oluşturulan tablolar temizlendi. Ayrıntı: ' . $e->getMessage(), 0, $e);
+    }
+}
