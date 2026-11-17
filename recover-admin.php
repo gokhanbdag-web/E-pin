@@ -91,16 +91,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($update->rowCount() !== 1) {
             throw new RuntimeException('Hesap güncellenemedi. Herhangi bir değişiklik uygulanmadı.');
         }
+        // Establish the permanent deny marker before committing the password change.
+        // Exclusive creation also prevents two concurrent recovery requests from succeeding.
+        $marker = $root . '/storage/admin-recovery.disabled';
+        if (!is_dir($root . '/storage')) {
+            throw new RuntimeException('Kurtarma aracı güvenli biçimde devre dışı bırakılamadı. Şifre değişikliği uygulanmadı.');
+        }
+        $markerHandle = @fopen($marker, 'x');
+        if ($markerHandle === false) {
+            throw new RuntimeException('Kurtarma aracı zaten kullanılmış veya güvenli biçimde kilitlenemedi. Şifre değişikliği uygulanmadı.');
+        }
+        $markerWritten = fwrite($markerHandle, date(DATE_ATOM));
+        $markerClosed = fclose($markerHandle);
+        if ($markerWritten === false || !$markerClosed) {
+            @unlink($marker);
+            throw new RuntimeException('Kurtarma kilidi yazılamadı. Şifre değişikliği uygulanmadı.');
+        }
+        @chmod($marker, 0600);
+
         $pdo->commit();
 
-        // Remove the recovery entry point after a successful one-time use.
-        if (!@unlink(__FILE__)) {
-            // If the host disallows self-deletion, leave a deny marker and fail closed.
-            $marker = $root . '/storage/admin-recovery.disabled';
-            $storage = $root . '/storage';
-            if (!is_dir($storage)) @mkdir($storage, 0700, true);
-            @file_put_contents($marker, date(DATE_ATOM), LOCK_EX);
-        }
+        // The deny marker remains even when the host cannot delete this PHP file.
+        @unlink(__FILE__);
         $success = true;
         $_SESSION = [];
         session_destroy();
