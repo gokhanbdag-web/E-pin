@@ -67,3 +67,13 @@ $commitPos = strpos($recovery, '$pdo->commit();');
 if ($markerCreatePos === false || $commitPos === false || $markerCreatePos > $commitPos) throw new RuntimeException('Admin recovery must create an exclusive deny marker before committing the password change.');
 if (!str_contains($recovery, "if (\$markerHandle === false)")) throw new RuntimeException('Admin recovery must fail closed when the deny marker cannot be created.');
 if (!str_contains($recovery, "@chmod(\$marker, 0600)")) throw new RuntimeException('Admin recovery deny marker must use restrictive file permissions.');
+
+$loginController = file_get_contents($root . '/index.php');
+foreach (['login_is_rate_limited($pdo,$email,$ip)','login_record_failure($pdo,$email,$ip)','login_clear_failures($pdo,$email,$ip)',"header('Retry-After: 900')"] as $needle) {
+    if (!str_contains($loginController, $needle)) throw new RuntimeException('Login route is missing brute-force protection: ' . $needle);
+}
+$bootstrap = file_get_contents($root . '/app/bootstrap.php');
+foreach (['function login_is_rate_limited','function login_record_failure','function login_clear_failures',"hash_hmac('sha256'"] as $needle) {
+    if (!str_contains($bootstrap, $needle)) throw new RuntimeException('Login rate-limit helper is missing: ' . $needle);
+}
+if (str_contains($loginController, 'HTTP_X_FORWARDED_FOR')) throw new RuntimeException('Login rate limiting must not trust spoofable forwarded IP headers.');
