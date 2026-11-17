@@ -24,7 +24,13 @@ if($_SERVER['REQUEST_METHOD']==='POST'){csrf_check();$action=(string)($_POST['ac
  require_once APP_ROOT.'/app/backup.php';
  $upload=$_FILES['backup_file']??null;
  if(!is_array($upload)||($upload['error']??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_OK)throw new RuntimeException('Lütfen geçerli bir SQL yedeği seçin.');
- $count=restore_database_backup(db(),(string)($upload['tmp_name']??''));
+ $targetHost=trim((string)($_POST['target_db_host']??''));
+ $targetName=trim((string)($_POST['target_db_name']??''));
+ $targetUser=(string)($_POST['target_db_user']??'');
+ $targetPass=(string)($_POST['target_db_pass']??'');
+ if($targetHost===''||!preg_match('/^[A-Za-z0-9_.:-]{1,190}$/',$targetHost)||!preg_match('/^[A-Za-z0-9_]{1,64}$/',$targetName)||$targetUser==='')throw new RuntimeException('Hedef veritabanı bağlantı bilgilerini kontrol edin.');
+ $targetPdo=new PDO('mysql:host='.$targetHost.';dbname='.$targetName.';charset=utf8mb4',$targetUser,$targetPass,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC,PDO::ATTR_EMULATE_PREPARES=>false]);
+ $count=restore_database_backup($targetPdo,(string)($upload['tmp_name']??''));
  flash('success',$count.' tablo boş veritabanına geri yüklendi.');
  redirect(url('admin?section=backup'));
 }
