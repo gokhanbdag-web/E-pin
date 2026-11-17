@@ -121,6 +121,7 @@ function payment_mark_paid(int $orderId,string $provider,string $reference=''):v
         }
         $q=$pdo->prepare("SELECT status FROM refund_requests WHERE order_id=? ORDER BY id DESC LIMIT 1 FOR UPDATE");$q->execute([$orderId]);$refundStatus=$q->fetchColumn();
         if(in_array($refundStatus,['requested','approved'],true))$reviewReason='Payment received while a refund request is open for order '.$orderId.'; manual review required.';
+        elseif($o['status']==='payment_failed')$reviewReason='Verified payment arrived after the order payment was marked failed for order '.$orderId.'; inventory and coupon reservations may have been released, manual review required.';
         elseif(in_array($o['status'],['cancelled','expired'],true))$reviewReason='Late payment for cancelled/expired order '.$orderId.' requires manual review.';
         $restoreCoupon=(int)$o['coupon_usage_released']===1&&!empty($o['coupon_code']);
         if($restoreCoupon)$pdo->prepare('UPDATE coupons SET usage_count=usage_count+1 WHERE code=?')->execute([$o['coupon_code']]);
