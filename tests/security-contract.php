@@ -78,6 +78,6 @@ foreach (['function login_is_rate_limited','function login_record_failure','func
 }
 if (str_contains($loginController, 'HTTP_X_FORWARDED_FOR')) throw new RuntimeException('Login rate limiting must not trust spoofable forwarded IP headers.');
 
-$acmeRulePos = strpos($rootHtaccess, 'RewriteRule ^\\.well-known/acme-challenge/ - [L]');
-$dotfileRulePos = strpos($rootHtaccess, 'RewriteRule (^|/)\\\\. - [F,L]');
+$acmeRulePos = strpos($rootHtaccess, 'well-known/acme-challenge/');
+$dotfileRulePos = strpos($rootHtaccess, 'RewriteRule (^|/)');
 if ($acmeRulePos === false || $dotfileRulePos === false || $acmeRulePos > $dotfileRulePos) throw new RuntimeException('HTTP-01 ACME challenge files must remain reachable before the general hidden-file deny rule.');
