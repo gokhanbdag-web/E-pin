@@ -78,3 +78,53 @@
 @media(prefers-reduced-motion:reduce){
  .admin-side,.admin-nav-backdrop{transition:none!important}
 }
+
+/* Mobile administration: touch-sized controls, stable forms and deliberate table scrolling. */
+@media(max-width:760px){
+ .admin-content{overflow-x:clip}
+ .admin-content .admin-panel,.admin-content .stat-card,.admin-content .admin-form{min-width:0;max-width:100%;overflow-wrap:anywhere}
+ .admin-content .admin-form{width:100%;padding:15px}
+ .admin-form input:not([type=checkbox]):not([type=radio]),
+ .admin-form select,.admin-form textarea,
+ .seller-product-form input,.seller-product-form select,.seller-product-form textarea,
+ .ticket-admin-form select,.ticket-admin-form textarea{
+  width:100%;max-width:100%;min-width:0;min-height:44px;font-size:16px
+ }
+ .admin-form textarea,.seller-product-form textarea,.ticket-admin-form textarea{min-height:96px}
+ .admin-form input[type=file]{min-height:44px;max-width:100%;font-size:14px}
+ .admin-form input[type=checkbox],.admin-form input[type=radio]{width:20px;height:20px;flex:0 0 auto}
+ .form-actions{align-items:stretch;flex-direction:column;gap:10px}
+ .form-actions button,.admin-form button,.ticket-admin-form button{width:100%;min-width:0;min-height:46px;margin:0}
+ .actions,.seller-review-actions{flex-wrap:wrap;gap:8px}
+ .actions a,.actions button,.seller-review-actions a,.seller-review-actions button{min-height:42px;display:inline-flex;align-items:center;justify-content:center}
+ .table-wrap,.responsive-table{
+  display:block;width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;
+  overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;scrollbar-color:#596987 #141c31;
+  border-radius:10px
+ }
+ .table-wrap table,.responsive-table table{width:max-content;min-width:640px;max-width:none}
+ .table-wrap th,.table-wrap td,.responsive-table th,.responsive-table td{
+  padding:11px 12px;vertical-align:middle
+ }
+ .table-wrap th,.responsive-table th{white-space:nowrap}
+ .table-wrap td,.responsive-table td{overflow-wrap:anywhere}
+ .admin-content .report-filter{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .admin-content .report-filter input,.admin-content .report-filter select{width:100%;min-width:0;min-height:44px;font-size:16px}
+ .admin-content .report-filter button{width:100%;min-height:46px}
+ .admin-content .page-head a{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+ .admin-content .demo-actions{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;width:100%}
+ .admin-content .demo-actions form,.admin-content .demo-actions button{width:100%;min-width:0}
+ .admin-content .panel-heading{min-width:0}
+ .admin-content canvas{max-width:100%}
+}
+@media(max-width:420px){
+ .admin-shell{padding:10px}
+ .admin-content .stat-grid{grid-template-columns:minmax(0,1fr)}
+ .admin-content .report-filter{grid-template-columns:minmax(0,1fr)}
+ .admin-content .admin-panel{padding:14px}
+ .admin-content .page-head h1{font-size:1.45rem;line-height:1.2}
+ .admin-content .account-card{padding:13px}
+ .admin-content .actions{align-items:stretch;flex-direction:column}
+ .admin-content .actions a,.admin-content .actions button{width:100%}
+}
