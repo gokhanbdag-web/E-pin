@@ -4,6 +4,7 @@ DirectoryIndex index.php
 RewriteEngine On
 # Keep application internals and operational source files out of the public web.
 RewriteRule ^(app|storage|database|tests|ops|\.github)(/|$) - [F,L,NC]
+RewriteRule ^\.well-known/acme-challenge/ - [L]
 RewriteRule (^|/)\. - [F,L]
 RewriteRule ^(README\.md|\.gitignore)$ - [F,L,NC]
 RewriteRule ^uploads/branding/([a-f0-9]{32}\.(?:jpg|png|webp))$ index.php?brand_logo=$1 [L,QSA,NC]
