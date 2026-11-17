@@ -170,3 +170,17 @@ if (!str_contains($adminController, "if(\$_SERVER['REQUEST_METHOD']==='POST'){cs
 if (!str_contains($frontController, "if(\$_SERVER['REQUEST_METHOD']==='POST'){\n   csrf_check();\$action=(string)(\$_POST['action']??'');")) {
     throw new RuntimeException('Seller product mutations must require a valid CSRF token.');
 }
+
+
+// Historical seller ownership is snapshotted on order_items and must not follow mutable product ownership.
+$sellerOrderSource = file_get_contents($root . '/index.php');
+if (!str_contains($sellerOrderSource, 'WHERE oi.seller_id=? ORDER BY o.id DESC LIMIT 300')) {
+    throw new RuntimeException('Seller order history must be scoped to the seller_id snapshot on each order item.');
+}
+if (!str_contains($sellerOrderSource, "WHERE oi.seller_id=? AND o.payment_status='paid' AND o.status<>'refunded'")) {
+    throw new RuntimeException('Seller sales totals must use immutable order-item ownership, not the current product owner.');
+}
+if (str_contains($sellerOrderSource, 'WHERE p.seller_id=? ORDER BY o.id DESC LIMIT 300') ||
+    str_contains($sellerOrderSource, "WHERE p.seller_id=? AND o.payment_status='paid'")) {
+    throw new RuntimeException('Seller historical order data must never be reassigned by changing the current product owner.');
+}
