@@ -85,18 +85,19 @@ function login_is_rate_limited(PDO $pdo,string $email,string $ip):bool {
  $ipHash=login_attempt_hash($ip);
  $emailHash=login_attempt_hash(strtolower(trim($email)));
  $pdo->exec("DELETE FROM login_attempts WHERE attempted_at<DATE_SUB(NOW(),INTERVAL 1 DAY) LIMIT 500");
- $q=$pdo->prepare('SELECT COUNT(*) FROM login_attempts WHERE ip_hash=? AND attempted_at>=DATE_SUB(NOW(),INTERVAL 15 MINUTE)');
+ $q=$pdo->prepare('SELECT COUNT(*) FROM login_attempts WHERE scope=1 AND ip_hash=? AND attempted_at>=DATE_SUB(NOW(),INTERVAL 15 MINUTE)');
  $q->execute([$ipHash]);$ipAttempts=(int)$q->fetchColumn();
- $q=$pdo->prepare('SELECT COUNT(*) FROM login_attempts WHERE ip_hash=? AND email_hash=? AND attempted_at>=DATE_SUB(NOW(),INTERVAL 15 MINUTE)');
+ $q=$pdo->prepare('SELECT COUNT(*) FROM login_attempts WHERE scope=2 AND ip_hash=? AND email_hash=? AND attempted_at>=DATE_SUB(NOW(),INTERVAL 15 MINUTE)');
  $q->execute([$ipHash,$emailHash]);$pairAttempts=(int)$q->fetchColumn();
  return $ipAttempts>=30||$pairAttempts>=8;
 }
 function login_record_failure(PDO $pdo,string $email,string $ip):void {
- $q=$pdo->prepare('INSERT INTO login_attempts(ip_hash,email_hash) VALUES(?,?)');
- $q->execute([login_attempt_hash($ip),login_attempt_hash(strtolower(trim($email)))]);
+ $q=$pdo->prepare('INSERT INTO login_attempts(scope,ip_hash,email_hash) VALUES(1,?,?),(2,?,?)');
+ $ipHash=login_attempt_hash($ip);$emailHash=login_attempt_hash(strtolower(trim($email)));
+ $q->execute([$ipHash,$emailHash,$ipHash,$emailHash]);
 }
 function login_clear_failures(PDO $pdo,string $email,string $ip):void {
- $q=$pdo->prepare('DELETE FROM login_attempts WHERE ip_hash=? AND email_hash=?');
+ $q=$pdo->prepare('DELETE FROM login_attempts WHERE scope=2 AND ip_hash=? AND email_hash=?');
  $q->execute([login_attempt_hash($ip),login_attempt_hash(strtolower(trim($email)))]);
 }
 function require_login(?string $role=null):void{$u=$_SESSION['user']??null;if(!$u)redirect(url('login'));if($role!==null&&($u['role']??'')!==$role){http_response_code(403);exit('Bu alana erişim yetkiniz yok.');}}
