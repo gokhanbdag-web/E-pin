@@ -54,3 +54,10 @@ if (!str_contains($backupSource, 'E-pin restore cleanup failed')) throw new Runt
 if (!str_contains($adminSource, 'if($resource===\'backup\'&&$action===\'restore\')')) throw new RuntimeException('Admin backup restore action is missing.');
 if (!str_contains($adminSource, 'target_db_host') || !str_contains($adminSource, 'new PDO(\'mysql:host=\'')) throw new RuntimeException('Restore must connect to a separately supplied target database.');
 if (!str_contains($view, 'enctype="multipart/form-data"') || !str_contains($view, 'name="backup_file"') || !str_contains($view, 'name="target_db_pass"')) throw new RuntimeException('Backup restore upload form is missing.');
+
+$rootHtaccess = file_get_contents($root . '/.htaccess');
+foreach (['app','storage','database','tests','ops','.github'] as $privatePath) {
+    if (!str_contains($rootHtaccess, $privatePath)) throw new RuntimeException('Public web access must be denied for private project path: ' . $privatePath);
+}
+if (!str_contains($rootHtaccess, 'RewriteRule ^(README\\.md|\\.gitignore)$ - [F,L,NC]')) throw new RuntimeException('Repository metadata files must not be served publicly.');
+if (!str_contains($rootHtaccess, 'RewriteRule (^|/)\\. - [F,L]')) throw new RuntimeException('Hidden dotfiles must not be served publicly.');
