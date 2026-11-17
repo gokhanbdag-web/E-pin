@@ -1,4 +1,19 @@
-(function(){'use strict';var b=document.querySelector('.admin-menu-toggle'),n=document.getElementById('admin-navigation'),o=document.querySelector('[data-admin-close]');if(!b||!n)return;function close(){b.setAttribute('aria-expanded','false');n.classList.remove('is-open');if(o)o.classList.remove('is-visible');document.body.classList.remove('admin-menu-open');}b.addEventListener('click',function(){var open=b.getAttribute('aria-expanded')!=='true';b.setAttribute('aria-expanded',String(open));n.classList.toggle('is-open',open);if(o)o.classList.toggle('is-visible',open);document.body.classList.toggle('admin-menu-open',open);});if(o)o.addEventListener('click',close);n.addEventListener('click',function(e){if(e.target.closest('a'))close();});document.addEventListener('keydown',function(e){if(e.key==='Escape')close();});})();
+(function(){'use strict';
+var b=document.querySelector('.admin-menu-toggle'),n=document.getElementById('admin-navigation'),o=document.querySelector('[data-admin-close]');if(!b||!n)return;
+function setMenuOpen(open,restoreFocus){
+ b.setAttribute('aria-expanded',String(open));
+ b.setAttribute('aria-label',open?'Yönetim menüsünü kapat':'Yönetim menüsünü aç');
+ n.classList.toggle('is-open',open);
+ if(o)o.classList.toggle('is-visible',open);
+ document.body.classList.toggle('admin-menu-open',open);
+ if(!open&&restoreFocus)b.focus();
+}
+b.addEventListener('click',function(){setMenuOpen(b.getAttribute('aria-expanded')!=='true',false);});
+if(o)o.addEventListener('click',function(){setMenuOpen(false,true);});
+n.addEventListener('click',function(e){if(e.target.closest('a'))setMenuOpen(false,false);});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&b.getAttribute('aria-expanded')==='true')setMenuOpen(false,true);});
+window.addEventListener('resize',function(){if(window.innerWidth>760&&b.getAttribute('aria-expanded')==='true')setMenuOpen(false,false);});
+})();
 (function(){'use strict';
 var form=document.querySelector('.slider-manager-form');if(!form)return;
 var list=form,dragged=null;

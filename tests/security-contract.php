@@ -90,3 +90,13 @@ foreach (['position:absolute','top:calc(100% + 1px)','opacity:0','visibility:hid
 foreach (['document.addEventListener(\'click\'','e.key===\'Escape\'','setMenuOpen(false)'] as $needle) {
     if (!str_contains($storefrontJs, $needle)) throw new RuntimeException('Mobile navigation close behavior is missing: ' . $needle);
 }
+
+
+$adminCss = file_get_contents($root . '/assets/css/admin.css');
+$adminJs = file_get_contents($root . '/assets/js/admin.js');
+foreach (['transform:translateX(-102%)','transform:translateX(0)','visibility:hidden','pointer-events:none','prefers-reduced-motion:reduce'] as $needle) {
+    if (!str_contains($adminCss, $needle)) throw new RuntimeException('Mobile admin navigation overlay styling is missing: ' . $needle);
+}
+foreach (['function setMenuOpen(open,restoreFocus)','Yönetim menüsünü kapat','window.addEventListener(\'resize\'','window.innerWidth>760','setMenuOpen(false,true)'] as $needle) {
+    if (!str_contains($adminJs, $needle)) throw new RuntimeException('Mobile admin navigation behavior is missing: ' . $needle);
+}

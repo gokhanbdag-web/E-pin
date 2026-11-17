@@ -44,3 +44,37 @@
 @media(max-width:650px){.slider-card-title{flex-wrap:wrap}.slider-drag-handle{width:42px;height:42px}}
 
 .nav-logout-form{display:inline-flex;margin:0}.nav-logout{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:left}
+
+/* Mobile admin navigation overlay: animated, scroll-safe and responsive to orientation changes. */
+@media(max-width:760px){
+ .admin-side{
+  display:grid;
+  transform:translateX(-102%);
+  visibility:hidden;
+  pointer-events:none;
+  transition:transform .26s cubic-bezier(.2,.75,.25,1),visibility 0s linear .26s;
+  will-change:transform;
+ }
+ .admin-side.is-open{
+  transform:translateX(0);
+  visibility:visible;
+  pointer-events:auto;
+  transition:transform .26s cubic-bezier(.2,.75,.25,1),visibility 0s;
+ }
+ .admin-nav-backdrop{
+  display:block;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transition:opacity .22s ease,visibility 0s linear .22s;
+ }
+ .admin-nav-backdrop.is-visible{
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+  transition:opacity .22s ease,visibility 0s;
+ }
+}
+@media(prefers-reduced-motion:reduce){
+ .admin-side,.admin-nav-backdrop{transition:none!important}
+}
