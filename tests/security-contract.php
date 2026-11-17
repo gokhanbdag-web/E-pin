@@ -126,3 +126,17 @@ $adminManageView = file_get_contents($root . '/app/views/admin/manage.php');
 foreach (['Satıcı başvurusunu reddetmek istediğinize emin misiniz?','Satıcı ödeme talebini reddetmek istediğinize emin misiniz?','İade talebini reddetmek istediğinize emin misiniz?'] as $needle) {
     if (!str_contains($adminManageView, $needle)) throw new RuntimeException('Admin destructive decision confirmation is missing: ' . $needle);
 }
+
+
+$adminLayout = file_get_contents($root . '/app/views/layout-admin.php');
+foreach (["flash('error')","flash('success')",'class="alert-error" role="alert" aria-live="assertive"','class="alert-success" role="status" aria-live="polite"','e($m)','alert-dismiss'] as $needle) {
+    if (!str_contains($adminLayout, $needle)) throw new RuntimeException('Accessible admin success/error notification rendering is missing: ' . $needle);
+}
+$adminFeedbackCss = file_get_contents($root . '/assets/css/admin.css');
+foreach (['.admin-content .alert-error','.admin-content .alert-success','.admin-content .alert-dismiss:focus-visible','min-height:36px'] as $needle) {
+    if (!str_contains($adminFeedbackCss, $needle)) throw new RuntimeException('Admin notification visual or keyboard styling is missing: ' . $needle);
+}
+$adminFeedbackJs = file_get_contents($root . '/assets/js/admin.js');
+foreach ([".admin-content .alert-dismiss","alert.setAttribute('aria-hidden','true')",'alert.remove()'] as $needle) {
+    if (!str_contains($adminFeedbackJs, $needle)) throw new RuntimeException('Admin notification dismiss behavior is missing: ' . $needle);
+}
