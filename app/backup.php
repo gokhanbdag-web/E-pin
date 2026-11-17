@@ -102,7 +102,7 @@ function restore_database_backup(PDO $pdo, string $filePath, int $maxBytes = 335
             if (preg_match('/^SET\s+FOREIGN_KEY_CHECKS\s*=\s*[01]$/i', $statement) || preg_match("/^SET\s+SQL_MODE\s*=\s*'[^']*'$/i", $statement)) { $pdo->exec($statement); continue; }
             if (preg_match('/^DROP TABLE IF EXISTS \x60([A-Za-z0-9_]+)\x60$/i', $statement, $m)) { $tablesCreated[$m[1]] = true; $pdo->exec($statement); continue; }
             if (preg_match('/^CREATE TABLE \x60([A-Za-z0-9_]+)\x60\s*\(/is', $statement, $m)) { $tablesCreated[$m[1]] = true; $pdo->exec($statement); continue; }
-            if (preg_match('/^INSERT INTO \x60([A-Za-z0-9_]+)\x60\s*\(/is', $statement)) { $pdo->exec($statement); continue; }
+            if (preg_match('/^INSERT INTO \x60([A-Za-z0-9_]+)\x60\s*\(/is', $statement, $m) && isset($tablesCreated[$m[1]])) { $pdo->exec($statement); continue; }
             throw new RuntimeException('Yedek dosyasında izin verilmeyen SQL komutu bulundu.');
         }
         if (!$tablesCreated) throw new RuntimeException('Yedekte geri yüklenecek tablo bulunamadı.');
