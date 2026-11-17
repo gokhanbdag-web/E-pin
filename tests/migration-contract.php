@@ -52,5 +52,5 @@ foreach (['GET_LOCK','RELEASE_LOCK','schema_migrations','information_schema.COLU
     if (!str_contains($migrator, $needle)) throw new RuntimeException('Migration runner is missing safety feature: ' . $needle);
 }
 if (!str_contains($migrator, "PHP_SAPI !== 'cli' && !defined('EPIN_INTERNAL_MIGRATOR')")) throw new RuntimeException('Migration runner must reject direct web access.');
-if (!str_contains($all, 'KEY idx_login_attempt_ip_time') || !str_contains($all, 'KEY idx_login_attempt_pair_time')) throw new RuntimeException('Login rate-limit indexes are missing.');
+if (!str_contains($all, 'scope TINYINT UNSIGNED NOT NULL') || !str_contains($all, 'KEY idx_login_attempt_ip_time') || !str_contains($all, 'KEY idx_login_attempt_pair_time')) throw new RuntimeException('Login rate-limit indexes are missing.');
 echo "Migration contract checks passed (" . count($files) . " ordered files).\n";
