@@ -73,7 +73,7 @@ foreach (['login_is_rate_limited($pdo,$email,$ip)','login_record_failure($pdo,$e
     if (!str_contains($loginController, $needle)) throw new RuntimeException('Login route is missing brute-force protection: ' . $needle);
 }
 $bootstrap = file_get_contents($root . '/app/bootstrap.php');
-foreach (['function login_is_rate_limited','function login_record_failure','function login_clear_failures',"hash_hmac('sha256'"] as $needle) {
+foreach (['function login_is_rate_limited','function login_record_failure','function login_clear_failures','scope=1','scope=2',"hash_hmac('sha256'"] as $needle) {
     if (!str_contains($bootstrap, $needle)) throw new RuntimeException('Login rate-limit helper is missing: ' . $needle);
 }
 if (str_contains($loginController, 'HTTP_X_FORWARDED_FOR')) throw new RuntimeException('Login rate limiting must not trust spoofable forwarded IP headers.');
