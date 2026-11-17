@@ -81,3 +81,12 @@ if (str_contains($loginController, 'HTTP_X_FORWARDED_FOR')) throw new RuntimeExc
 $acmeRulePos = strpos($rootHtaccess, 'well-known/acme-challenge/');
 $dotfileRulePos = strpos($rootHtaccess, 'RewriteRule (^|/)');
 if ($acmeRulePos === false || $dotfileRulePos === false || $acmeRulePos > $dotfileRulePos) throw new RuntimeException('HTTP-01 ACME challenge files must remain reachable before the general hidden-file deny rule.');
+
+$storefrontCss = file_get_contents($root . '/assets/css/storefront.css');
+$storefrontJs = file_get_contents($root . '/assets/js/storefront.js');
+foreach (['position:absolute','top:calc(100% + 1px)','opacity:0','visibility:hidden','transform:translateY(-10px)','transform:translateY(0)','pointer-events:none','prefers-reduced-motion:reduce'] as $needle) {
+    if (!str_contains($storefrontCss, $needle)) throw new RuntimeException('Mobile navigation overlay transition is missing: ' . $needle);
+}
+foreach (['document.addEventListener(\'click\'','e.key===\'Escape\'','setMenuOpen(false)'] as $needle) {
+    if (!str_contains($storefrontJs, $needle)) throw new RuntimeException('Mobile navigation close behavior is missing: ' . $needle);
+}
