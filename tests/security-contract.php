@@ -140,3 +140,33 @@ $adminFeedbackJs = file_get_contents($root . '/assets/js/admin.js');
 foreach ([".admin-content .alert-dismiss","alert.setAttribute('aria-hidden','true')",'alert.remove()'] as $needle) {
     if (!str_contains($adminFeedbackJs, $needle)) throw new RuntimeException('Admin notification dismiss behavior is missing: ' . $needle);
 }
+
+
+// Server-side authorization and tenant-isolation contracts for admin, seller and customer routes.
+$frontController = file_get_contents($root . '/index.php');
+$adminController = file_get_contents($root . '/app/admin.php');
+foreach ([
+    "if(\$path==='admin'||str_starts_with(\$path,'admin/')){require APP_ROOT.'/app/admin.php';exit;}",
+    "if(\$path==='seller'||str_starts_with(\$path,'seller/')){",
+    "require_login('seller');",
+    "SELECT * FROM seller_profiles WHERE user_id=? AND status='approved' LIMIT 1",
+    "WHERE seller_id=? AND id=?",
+    "SELECT id FROM products WHERE id=? AND seller_id=?",
+    "UPDATE products SET delivery_type='automatic' WHERE id=? AND seller_id=?",
+    "WHERE p.seller_id=? ORDER BY o.id DESC LIMIT 300",
+    "SELECT * FROM seller_profiles WHERE user_id=? LIMIT 1",
+    "UPDATE seller_profiles SET shop_name=?,shop_slug=?,status='pending' WHERE user_id=?",
+    "SELECT id,order_no,total,status,payment_status,created_at FROM orders WHERE user_id=?",
+    "SELECT id,subject,message,status,admin_reply,created_at,updated_at FROM support_tickets WHERE user_id=?"
+] as $needle) {
+    if (!str_contains($frontController, $needle)) throw new RuntimeException('Seller/customer route authorization or tenant isolation is missing: ' . $needle);
+}
+if (!str_starts_with($adminController, "<?php\ndeclare(strict_types=1);\nrequire_login('admin');")) {
+    throw new RuntimeException('Admin controller must enforce the admin role before processing any route.');
+}
+if (!str_contains($adminController, "if(\$_SERVER['REQUEST_METHOD']==='POST'){csrf_check();")) {
+    throw new RuntimeException('Every admin state-changing request must pass CSRF validation before action dispatch.');
+}
+if (!str_contains($frontController, "if(\$_SERVER['REQUEST_METHOD']==='POST'){\n   csrf_check();\$action=(string)(\$_POST['action']??'');")) {
+    throw new RuntimeException('Seller product mutations must require a valid CSRF token.');
+}
