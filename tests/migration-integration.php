@@ -306,6 +306,19 @@ assert_true($afterDuplicate['payment_status']==='paid'&&$afterDuplicate['status'
 payment_mark_paid($orderId, 'paytr', 'TEST-PAYMENT-ATTEMPT-3');
 $firstState=$partial->prepare("SELECT status FROM payment_transactions WHERE provider_reference='TEST-PAYMENT-ATTEMPT-3'");$firstState->execute();
 assert_true($firstState->fetchColumn()==='success', 'A repeated callback for the same successful transaction must remain idempotent.');
+// A verified success arriving after a failure callback must not fulfil against released stock.
+$partial->prepare("INSERT INTO orders(user_id,order_no,total,status,payment_status) VALUES(?,?,?,'pending','unpaid')")->execute([$userId,'TEST-LATE-AFTER-FAILURE',12]);
+$lateFailureOrder=(int)$partial->lastInsertId();
+$partial->prepare("INSERT INTO order_items(order_id,product_id,seller_id,seller_commission_rate,discount_amount,product_name,quantity,unit_price) VALUES(?,NULL,?,10,0,'Late payment seller item',1,12)")->execute([$lateFailureOrder,$sellerId]);
+payment_attempt_reserve($lateFailureOrder,'paytr',12,'TEST-LATE-AFTER-FAILURE-PAY');
+payment_attempt_fail($lateFailureOrder,'paytr','TEST-LATE-AFTER-FAILURE-PAY');
+$failedBeforeLatePayment=$partial->prepare('SELECT status,payment_status FROM orders WHERE id=?');$failedBeforeLatePayment->execute([$lateFailureOrder]);$failedBeforeLateRow=$failedBeforeLatePayment->fetch(PDO::FETCH_ASSOC);
+assert_true($failedBeforeLateRow['status']==='payment_failed'&&$failedBeforeLateRow['payment_status']==='failed','Failure callback must release the order into payment_failed state before the late success is processed.');
+payment_mark_paid($lateFailureOrder,'paytr','TEST-LATE-AFTER-FAILURE-PAY');
+$lateAfterFailureState=$partial->prepare('SELECT status,payment_status FROM orders WHERE id=?');$lateAfterFailureState->execute([$lateFailureOrder]);$lateAfterFailureRow=$lateAfterFailureState->fetch(PDO::FETCH_ASSOC);
+assert_true($lateAfterFailureRow['status']==='manual_review'&&$lateAfterFailureRow['payment_status']==='paid','A verified payment received after a failure callback must be held for manual review rather than automatically fulfilled.');
+$lateAfterFailureLedger=$partial->prepare("SELECT COUNT(*) FROM seller_ledger WHERE order_id=? AND entry_type IN ('sale_credit','platform_commission')");$lateAfterFailureLedger->execute([$lateFailureOrder]);
+assert_true((int)$lateAfterFailureLedger->fetchColumn()===0,'A late payment held for manual review must not create seller earnings before fulfilment is reconciled.');
 // Refund ledger reversals: pending seller credit is cancelled; available credit is debited.
 $partial->prepare("INSERT INTO orders(user_id,order_no,total,status,payment_status) VALUES(?,?,?,?,?)")->execute([$userId,'TEST-REFUND-PENDING',10,'processing','paid']);
 $refundPendingOrder=(int)$partial->lastInsertId();
