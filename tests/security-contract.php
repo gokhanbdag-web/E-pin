@@ -100,3 +100,9 @@ foreach (['transform:translateX(-102%)','transform:translateX(0)','visibility:hi
 foreach (['function setMenuOpen(open,restoreFocus)','Yönetim menüsünü kapat','window.addEventListener(\'resize\'','window.innerWidth>760','setMenuOpen(false,true)'] as $needle) {
     if (!str_contains($adminJs, $needle)) throw new RuntimeException('Mobile admin navigation behavior is missing: ' . $needle);
 }
+
+
+$mobileStoreCss = file_get_contents($root . '/assets/css/storefront.css');
+foreach (['.product-detail{grid-template-columns:minmax(0,1fr)','aspect-ratio:16/10','grid-template-columns:repeat(2,minmax(0,1fr))','grid-template-columns:minmax(0,1fr)','grid-template-columns:68px minmax(0,1fr)','min-height:48px','@media(max-width:420px)','prefers-reduced-motion:reduce'] as $needle) {
+    if (!str_contains($mobileStoreCss, $needle)) throw new RuntimeException('Mobile storefront layout refinement is missing: ' . $needle);
+}
