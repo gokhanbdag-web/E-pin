@@ -8,8 +8,8 @@ $name='epin_login_rate_test';
 $server->exec("DROP DATABASE IF EXISTS `{$name}`");
 $server->exec("CREATE DATABASE `{$name}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
 try {
- $GLOBALS['app_config']=['db_host'=>$host,'db_name'=>$name,'db_user'=>$user,'db_pass'=>$pass,'app_key'=>str_repeat('k',64),'business_mode'=>'single_vendor'];
  require_once dirname(__DIR__).'/app/bootstrap.php';
+ $GLOBALS['app_config']=['db_host'=>$host,'db_name'=>$name,'db_user'=>$user,'db_pass'=>$pass,'app_key'=>str_repeat('k',64),'business_mode'=>'single_vendor'];
  $pdo=db();
  for($i=0;$i<8;$i++)login_record_failure($pdo,'admin@example.test','192.0.2.10');
  if(!login_is_rate_limited($pdo,'admin@example.test','192.0.2.10'))throw new RuntimeException('Eight failures for the same IP/email pair must trigger the temporary limit.');
