@@ -51,5 +51,5 @@ if (!str_contains($backupSource, '$size > $maxBytes')) throw new RuntimeExceptio
 if (!str_contains($backupSource, 'Yedek dosyasında izin verilmeyen SQL komutu bulundu.')) throw new RuntimeException('Restore must reject SQL statements outside the export format.');
 if (!str_contains($backupSource, 'isset($tablesCreated[$m[1]])')) throw new RuntimeException('Restore inserts must be restricted to tables created by the same backup.');
 if (!str_contains($backupSource, 'E-pin restore cleanup failed')) throw new RuntimeException('Restore must attempt cleanup after a failed import.');
-if (!str_contains($adminSource, "if($resource==='backup'&&$action==='restore')")) throw new RuntimeException('Admin backup restore action is missing.');
+if (!str_contains($adminSource, 'if($resource===\'backup\'&&$action===\'restore\')')) throw new RuntimeException('Admin backup restore action is missing.');
 if (!str_contains($view, 'enctype="multipart/form-data"') || !str_contains($view, 'name="backup_file"')) throw new RuntimeException('Backup restore upload form is missing.');
