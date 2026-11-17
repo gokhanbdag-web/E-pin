@@ -128,3 +128,23 @@
  .admin-content .actions{align-items:stretch;flex-direction:column}
  .admin-content .actions a,.admin-content .actions button{width:100%}
 }
+
+
+/* Admin accessibility: visible keyboard focus, readable controls and non-color-only feedback. */
+.admin-content :where(a,button,input,select,textarea,[tabindex]):focus-visible,
+.admin-side :where(a,button,[tabindex]):focus-visible,
+.admin-menu-toggle:focus-visible{
+ outline:3px solid #67e8d3;
+ outline-offset:3px;
+ box-shadow:0 0 0 5px #0b1020;
+}
+.admin-content :where(button,a,input,select,textarea){scroll-margin-block:96px}
+.admin-content :where(input,select,textarea):focus-visible{
+ border-color:#67e8d3;
+}
+.admin-content .link-danger:focus-visible{
+ outline-color:#ffb4c0;
+}
+@media(prefers-reduced-motion:no-preference){
+ .admin-content :where(a,button){transition:box-shadow .15s ease,outline-offset .15s ease}
+}

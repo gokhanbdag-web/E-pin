@@ -6,12 +6,22 @@ function setMenuOpen(open,restoreFocus){
  n.classList.toggle('is-open',open);
  if(o)o.classList.toggle('is-visible',open);
  document.body.classList.toggle('admin-menu-open',open);
+ if(open){var first=n.querySelector('a[href],button:not([disabled])');if(first)first.focus();}
  if(!open&&restoreFocus)b.focus();
 }
 b.addEventListener('click',function(){setMenuOpen(b.getAttribute('aria-expanded')!=='true',false);});
 if(o)o.addEventListener('click',function(){setMenuOpen(false,true);});
 n.addEventListener('click',function(e){if(e.target.closest('a'))setMenuOpen(false,false);});
-document.addEventListener('keydown',function(e){if(e.key==='Escape'&&b.getAttribute('aria-expanded')==='true')setMenuOpen(false,true);});
+document.addEventListener('keydown',function(e){
+ if(b.getAttribute('aria-expanded')!=='true')return;
+ if(e.key==='Escape'){setMenuOpen(false,true);return;}
+ if(e.key!=='Tab')return;
+ var items=Array.prototype.slice.call(n.querySelectorAll('a[href],button:not([disabled]),[tabindex]:not([tabindex="-1"])')).filter(function(el){return el.getClientRects().length>0;});
+ if(!items.length){e.preventDefault();b.focus();return;}
+ var first=items[0],last=items[items.length-1];
+ if(e.shiftKey&&(document.activeElement===first||!n.contains(document.activeElement))){e.preventDefault();last.focus();}
+ else if(!e.shiftKey&&(document.activeElement===last||!n.contains(document.activeElement))){e.preventDefault();first.focus();}
+});
 window.addEventListener('resize',function(){if(window.innerWidth>760&&b.getAttribute('aria-expanded')==='true')setMenuOpen(false,false);});
 })();
 (function(){'use strict';
@@ -29,4 +39,13 @@ handle.addEventListener('pointerup',end);handle.addEventListener('pointercancel'
 });
 list.addEventListener('click',function(e){var up=e.target.closest('[data-move-up]'),down=e.target.closest('[data-move-down]');if(up){var c=up.closest('.slider-manager-card'),p=c&&c.previousElementSibling;if(p&&p.classList.contains('slider-manager-card'))list.insertBefore(c,p);renumber();}if(down){var d=down.closest('.slider-manager-card'),n=d&&d.nextElementSibling;if(n&&n.classList.contains('slider-manager-card'))list.insertBefore(n,d);renumber();}});
 renumber();
+})();
+
+(function(){'use strict';
+document.addEventListener('submit',function(e){
+ var form=e.target;
+ if(form&&form.matches&&form.matches('.slider-manager-form')&&form.querySelector('input[name$="[delete]"]:checked')){
+  if(!window.confirm('Seçtiğiniz slaytlar kalıcı olarak silinecek. Devam etmek istiyor musunuz?'))e.preventDefault();
+ }
+});
 })();

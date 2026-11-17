@@ -112,3 +112,17 @@ $mobileAdminCss = file_get_contents($root . '/assets/css/admin.css');
 foreach (['overscroll-behavior-x:contain','-webkit-overflow-scrolling:touch','scrollbar-width:thin','min-height:44px','font-size:16px','min-height:46px','grid-template-columns:minmax(0,1fr)','@media(max-width:420px)'] as $needle) {
     if (!str_contains($mobileAdminCss, $needle)) throw new RuntimeException('Mobile admin table/form usability refinement is missing: ' . $needle);
 }
+
+
+$adminA11yCss = file_get_contents($root . '/assets/css/admin.css');
+foreach ([':focus-visible','outline:3px solid #67e8d3','outline-offset:3px','scroll-margin-block:96px'] as $needle) {
+    if (!str_contains($adminA11yCss, $needle)) throw new RuntimeException('Admin keyboard focus accessibility styling is missing: ' . $needle);
+}
+$adminA11yJs = file_get_contents($root . '/assets/js/admin.js');
+foreach (['if(e.key!==\'Tab\')return','e.shiftKey','first.focus()','last.focus()','Seçtiğiniz slaytlar kalıcı olarak silinecek'] as $needle) {
+    if (!str_contains($adminA11yJs, $needle)) throw new RuntimeException('Admin keyboard navigation or destructive confirmation behavior is missing: ' . $needle);
+}
+$adminManageView = file_get_contents($root . '/app/views/admin/manage.php');
+foreach (['Satıcı başvurusunu reddetmek istediğinize emin misiniz?','Satıcı ödeme talebini reddetmek istediğinize emin misiniz?','İade talebini reddetmek istediğinize emin misiniz?'] as $needle) {
+    if (!str_contains($adminManageView, $needle)) throw new RuntimeException('Admin destructive decision confirmation is missing: ' . $needle);
+}
