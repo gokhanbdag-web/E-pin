@@ -153,7 +153,6 @@ foreach ([
     "WHERE seller_id=? AND id=?",
     "SELECT id FROM products WHERE id=? AND seller_id=?",
     "UPDATE products SET delivery_type='automatic' WHERE id=? AND seller_id=?",
-    "WHERE p.seller_id=? ORDER BY o.id DESC LIMIT 300",
     "SELECT * FROM seller_profiles WHERE user_id=? LIMIT 1",
     "UPDATE seller_profiles SET shop_name=?,shop_slug=?,status='pending' WHERE user_id=?",
     "SELECT id,order_no,total,status,payment_status,created_at FROM orders WHERE user_id=?",
