@@ -76,6 +76,29 @@ function redirect(string $to):never{header('Location: '.$to);exit;}
 function csrf_token():string{if(empty($_SESSION['_token']))$_SESSION['_token']=bin2hex(random_bytes(32));return $_SESSION['_token'];}
 function csrf_check():void{if(!hash_equals(csrf_token(),(string)($_POST['_token']??''))){http_response_code(419);exit('Güvenlik doğrulaması başarısız.');}}
 function flash(string $key,?string $message=null):?string{if($message!==null){$_SESSION['_flash'][$key]=$message;return null;}$v=$_SESSION['_flash'][$key]??null;unset($_SESSION['_flash'][$key]);return $v;}
+function login_attempt_hash(string $value):string {
+ $key=(string)config('app_key','');
+ if(strlen($key)<32)throw new RuntimeException('Oturum güvenlik anahtarı yapılandırılmamış.');
+ return hash_hmac('sha256',$value,$key);
+}
+function login_is_rate_limited(PDO $pdo,string $email,string $ip):bool {
+ $ipHash=login_attempt_hash($ip);
+ $emailHash=login_attempt_hash(strtolower(trim($email)));
+ $pdo->exec("DELETE FROM login_attempts WHERE attempted_at<DATE_SUB(NOW(),INTERVAL 1 DAY) LIMIT 500");
+ $q=$pdo->prepare('SELECT COUNT(*) FROM login_attempts WHERE ip_hash=? AND attempted_at>=DATE_SUB(NOW(),INTERVAL 15 MINUTE)');
+ $q->execute([$ipHash]);$ipAttempts=(int)$q->fetchColumn();
+ $q=$pdo->prepare('SELECT COUNT(*) FROM login_attempts WHERE ip_hash=? AND email_hash=? AND attempted_at>=DATE_SUB(NOW(),INTERVAL 15 MINUTE)');
+ $q->execute([$ipHash,$emailHash]);$pairAttempts=(int)$q->fetchColumn();
+ return $ipAttempts>=30||$pairAttempts>=8;
+}
+function login_record_failure(PDO $pdo,string $email,string $ip):void {
+ $q=$pdo->prepare('INSERT INTO login_attempts(ip_hash,email_hash) VALUES(?,?)');
+ $q->execute([login_attempt_hash($ip),login_attempt_hash(strtolower(trim($email)))]);
+}
+function login_clear_failures(PDO $pdo,string $email,string $ip):void {
+ $q=$pdo->prepare('DELETE FROM login_attempts WHERE ip_hash=? AND email_hash=?');
+ $q->execute([login_attempt_hash($ip),login_attempt_hash(strtolower(trim($email)))]);
+}
 function require_login(?string $role=null):void{$u=$_SESSION['user']??null;if(!$u)redirect(url('login'));if($role!==null&&($u['role']??'')!==$role){http_response_code(403);exit('Bu alana erişim yetkiniz yok.');}}
 function render(string $view,array $data=[]):void{if(!isset($data['settings'])){$data['settings']=[];if(is_file(APP_ROOT.'/config.php'))foreach(db()->query('SELECT setting_key,setting_value FROM settings')->fetchAll() as $r)$data['settings'][$r['setting_key']]=$r['setting_value'];}if(!isset($data['categories'])&&is_file(APP_ROOT.'/config.php'))$data['categories']=db()->query("SELECT id,name,slug FROM categories WHERE status='active' ORDER BY sort_order,name")->fetchAll();if(!isset($data['menus'])&&is_file(APP_ROOT.'/config.php'))$data['menus']=db()->query("SELECT title,url,menu_type FROM menus WHERE status='active' AND location='header' AND menu_type NOT IN ('cart','account') AND url NOT IN ('cart','account','login') ORDER BY sort_order,id")->fetchAll();if(!isset($data['actionMenus'])&&is_file(APP_ROOT.'/config.php'))$data['actionMenus']=db()->query("SELECT title,menu_type FROM menus WHERE status='active' AND location='header' AND menu_type IN ('cart','account') ORDER BY FIELD(menu_type,'account','cart'),sort_order,id")->fetchAll();if(!isset($data['footerMenus'])&&is_file(APP_ROOT.'/config.php'))$data['footerMenus']=db()->query("SELECT title,url FROM menus WHERE status='active' AND location='footer' ORDER BY sort_order,id")->fetchAll();extract($data,EXTR_SKIP);$layout=str_starts_with($view,'admin/')?'layout-admin.php':'layout.php';require APP_ROOT.'/app/views/'.$layout;}
 
