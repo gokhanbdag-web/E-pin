@@ -106,3 +106,9 @@ $mobileStoreCss = file_get_contents($root . '/assets/css/storefront.css');
 foreach (['.product-detail{grid-template-columns:minmax(0,1fr)','aspect-ratio:16/10','grid-template-columns:repeat(2,minmax(0,1fr))','grid-template-columns:minmax(0,1fr)','grid-template-columns:68px minmax(0,1fr)','min-height:48px','@media(max-width:420px)','prefers-reduced-motion:reduce'] as $needle) {
     if (!str_contains($mobileStoreCss, $needle)) throw new RuntimeException('Mobile storefront layout refinement is missing: ' . $needle);
 }
+
+
+$mobileAdminCss = file_get_contents($root . '/assets/css/admin.css');
+foreach (['overscroll-behavior-x:contain','-webkit-overflow-scrolling:touch','scrollbar-width:thin','min-height:44px','font-size:16px','min-height:46px','grid-template-columns:minmax(0,1fr)','@media(max-width:420px)'] as $needle) {
+    if (!str_contains($mobileAdminCss, $needle)) throw new RuntimeException('Mobile admin table/form usability refinement is missing: ' . $needle);
+}
