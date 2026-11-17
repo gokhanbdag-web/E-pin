@@ -67,7 +67,7 @@ GitHub Actions checks PHP syntax, root/subdirectory routing, migration contracts
 - For an already-installed store, open `/recover-admin.php` over HTTPS.
 - Enter the exact database host, database name, database username and password configured during installation, plus the email of an existing active administrator.
 - The tool updates only that existing admin account's display name and password; it cannot create an account or elevate a non-admin user.
-- The recovery entry point removes itself after a successful reset. If the host prevents self-deletion, it writes a disable marker and refuses subsequent access.
+- A permanent deny marker is created exclusively before the password change is committed; the recovery entry point then attempts to remove itself. The marker blocks all subsequent access even if the host prevents self-deletion.
 - Use this only when you control the hosting account and database credentials. Delete the file manually if recovery is abandoned.
 
 

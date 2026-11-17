@@ -61,3 +61,9 @@ foreach (['app','storage','database','tests','ops','.github'] as $privatePath) {
 }
 if (!str_contains($rootHtaccess, 'RewriteRule ^(README\\.md|\\.gitignore)$ - [F,L,NC]')) throw new RuntimeException('Repository metadata files must not be served publicly.');
 if (!str_contains($rootHtaccess, 'RewriteRule (^|/)\\. - [F,L]')) throw new RuntimeException('Hidden dotfiles must not be served publicly.');
+
+$markerCreatePos = strpos($recovery, "\$markerHandle = @fopen(\$marker, 'x')");
+$commitPos = strpos($recovery, '$pdo->commit();');
+if ($markerCreatePos === false || $commitPos === false || $markerCreatePos > $commitPos) throw new RuntimeException('Admin recovery must create an exclusive deny marker before committing the password change.');
+if (!str_contains($recovery, "if (\$markerHandle === false)")) throw new RuntimeException('Admin recovery must fail closed when the deny marker cannot be created.');
+if (!str_contains($recovery, "@chmod(\$marker, 0600)")) throw new RuntimeException('Admin recovery deny marker must use restrictive file permissions.');
