@@ -161,6 +161,45 @@ $invalidAmountRejected=false;
 try{seller_request_withdrawal($sellerId,NAN);}catch(RuntimeException $e){$invalidAmountRejected=true;}
 assert_true($invalidAmountRejected,'Non-finite withdrawal amounts must be rejected.');
  
+// Two independent MySQL sessions must not acquire the same seller or withdrawal row lock concurrently.
+$lockProbe = new PDO(
+    "mysql:host={$host};port={$port};dbname=epin_partial_test;charset=utf8mb4",
+    $user,
+    $pass,
+    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
+);
+$partial->beginTransaction();
+$partial->prepare('SELECT id FROM seller_profiles WHERE id=? FOR UPDATE')->execute([$sellerId]);
+$lockProbe->beginTransaction();
+$sellerLockBlocked = false;
+try {
+    $lockProbe->prepare('SELECT id FROM seller_profiles WHERE id=? FOR UPDATE NOWAIT')->execute([$sellerId]);
+} catch (PDOException $e) {
+    $sellerLockBlocked = (int)($e->errorInfo[1] ?? 0) === 3572;
+}
+$lockProbe->rollBack();
+assert_true($sellerLockBlocked, 'A second database session must not bypass the seller row lock used to serialize withdrawal reservations.');
+$partial->commit();
+$lockProbe->beginTransaction();
+$lockProbe->prepare('SELECT id FROM seller_profiles WHERE id=? FOR UPDATE NOWAIT')->execute([$sellerId]);
+$lockProbe->commit();
+
+$partial->beginTransaction();
+$partial->prepare('SELECT id FROM seller_withdrawals WHERE id=? FOR UPDATE')->execute([$firstRequest]);
+$lockProbe->beginTransaction();
+$withdrawalLockBlocked = false;
+try {
+    $lockProbe->prepare('SELECT id FROM seller_withdrawals WHERE id=? FOR UPDATE NOWAIT')->execute([$firstRequest]);
+} catch (PDOException $e) {
+    $withdrawalLockBlocked = (int)($e->errorInfo[1] ?? 0) === 3572;
+}
+$lockProbe->rollBack();
+assert_true($withdrawalLockBlocked, 'A second database session must not concurrently change a withdrawal already locked for review.');
+$partial->commit();
+$lockProbe->beginTransaction();
+$lockProbe->prepare('SELECT id FROM seller_withdrawals WHERE id=? FOR UPDATE NOWAIT')->execute([$firstRequest]);
+$lockProbe->commit();
+
 // Exercise the same withdrawal decision service used by the admin route.
 seller_review_withdrawal($firstRequest,'approved',$userId,'Approved in integration test');
 $approvedState=$partial->prepare('SELECT status,admin_note FROM seller_withdrawals WHERE id=?');$approvedState->execute([$firstRequest]);$approvedRow=$approvedState->fetch(PDO::FETCH_ASSOC);
