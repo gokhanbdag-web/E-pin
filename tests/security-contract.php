@@ -129,7 +129,7 @@ foreach (['Satıcı başvurusunu reddetmek istediğinize emin misiniz?','Satıc�
 
 
 $adminLayout = file_get_contents($root . '/app/views/layout-admin.php');
-foreach (["flash('error')","flash('success')",'class="alert-error" role="alert" aria-live="assertive"','class="alert-success" role="status" aria-live="polite"','e($m)','alert-dismiss'] as $needle) {
+foreach (["flash('error')","flash('success')",'class="alert alert-error" role="alert" aria-live="assertive"','class="alert alert-success" role="status" aria-live="polite"','e($m)','alert-dismiss'] as $needle) {
     if (!str_contains($adminLayout, $needle)) throw new RuntimeException('Accessible admin success/error notification rendering is missing: ' . $needle);
 }
 $adminFeedbackCss = file_get_contents($root . '/assets/css/admin.css');
