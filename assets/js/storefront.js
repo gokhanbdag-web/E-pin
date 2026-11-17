@@ -1,6 +1,18 @@
 (function(){'use strict';
 var b=document.querySelector('.storefront-menu-toggle'),n=document.getElementById('storefront-navigation');
-if(b&&n){b.addEventListener('click',function(){var o=b.getAttribute('aria-expanded')!=='true';b.setAttribute('aria-expanded',String(o));b.setAttribute('aria-label',o?'Menüyü kapat':'Menüyü aç');n.classList.toggle('is-open',o);document.body.classList.toggle('storefront-menu-open',o);});n.addEventListener('click',function(e){if(e.target.closest('a')){b.setAttribute('aria-expanded','false');n.classList.remove('is-open');document.body.classList.remove('storefront-menu-open');}});}
+if(b&&n){
+ function setMenuOpen(open){
+  b.setAttribute('aria-expanded',String(open));
+  b.setAttribute('aria-label',open?'Menüyü kapat':'Menüyü aç');
+  n.classList.toggle('is-open',open);
+  document.body.classList.toggle('storefront-menu-open',open);
+ }
+ b.addEventListener('click',function(){setMenuOpen(b.getAttribute('aria-expanded')!=='true');});
+ n.addEventListener('click',function(e){if(e.target.closest('a'))setMenuOpen(false);});
+ document.addEventListener('click',function(e){if(b.getAttribute('aria-expanded')==='true'&&!e.target.closest('.storefront-header'))setMenuOpen(false);});
+ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&b.getAttribute('aria-expanded')==='true'){setMenuOpen(false);b.focus();}});
+ window.addEventListener('resize',function(){if(window.innerWidth>760&&b.getAttribute('aria-expanded')==='true')setMenuOpen(false);});
+}
 })();
 (function(){'use strict';
 var root=document.querySelector('[data-game-slider]');if(!root)return;
