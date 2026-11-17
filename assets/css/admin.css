@@ -148,3 +148,23 @@
 @media(prefers-reduced-motion:no-preference){
  .admin-content :where(a,button){transition:box-shadow .15s ease,outline-offset .15s ease}
 }
+
+
+/* Consistent, accessible admin operation feedback. */
+.admin-content .alert{
+ display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+ padding:13px 15px;margin:0 0 18px;border-radius:10px;
+ line-height:1.5;overflow-wrap:anywhere
+}
+.admin-content .alert-error{background:#572b38;border:1px solid #c65a70;color:#fff0f2}
+.admin-content .alert-success{background:#123d35;border:1px solid #2c9b7d;color:#e2fff6}
+.admin-content .alert-dismiss{
+ flex:0 0 32px;width:32px;height:32px;min-height:32px;padding:0;
+ border:1px solid currentColor;border-radius:7px;background:transparent;
+ color:inherit;font:inherit;font-size:1.25rem;line-height:1;cursor:pointer
+}
+.admin-content .alert-dismiss:focus-visible{outline:3px solid #67e8d3;outline-offset:3px}
+@media(max-width:760px){
+ .admin-content .alert{padding:12px;gap:10px}
+ .admin-content .alert-dismiss{min-width:36px;min-height:36px;width:36px;height:36px}
+}

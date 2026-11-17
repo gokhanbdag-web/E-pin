@@ -49,3 +49,13 @@ document.addEventListener('submit',function(e){
  }
 });
 })();
+
+
+(function(){'use strict';
+document.addEventListener('click',function(e){
+ var close=e.target.closest('.admin-content .alert-dismiss');
+ if(!close)return;
+ var alert=close.closest('.alert');
+ if(alert){alert.setAttribute('aria-hidden','true');alert.remove();}
+});
+})();
