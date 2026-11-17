@@ -41,6 +41,13 @@ jobs:
         run: php tests/backup-contract.php
       - name: Payment callback contract tests
         run: php tests/payment-contract.php
+      - name: Database backup/restore round-trip integration tests
+        env:
+          EPIN_TEST_DB_HOST: 127.0.0.1
+          EPIN_TEST_DB_PORT: 3306
+          EPIN_TEST_DB_USER: root
+          EPIN_TEST_DB_PASS: root
+        run: php tests/backup-roundtrip-integration.php
       - name: Database restore integration tests
         env:
           EPIN_TEST_DB_HOST: 127.0.0.1
