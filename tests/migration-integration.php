@@ -55,6 +55,7 @@ $single = test_db($server, 'epin_single_test', 'single_vendor');
 app_migrate($single);
 assert_true(migration_count($single) === expected_migration_count('single_vendor'), 'Single-vendor install did not apply all migrations for its selected mode.');
 assert_true(has_table($single, 'products') && has_table($single, 'inventory_codes'), 'Core and extended tables are missing.');
+assert_true(has_table($single, 'login_attempts'), 'Login rate-limit table is missing from single-vendor installs.');
 assert_true(!has_table($single, 'seller_profiles'), 'Single-vendor install must not create marketplace tables.');
 // Capture the selected mode's actual applied version count; later migrations may
 // increase this number without changing the idempotency contract.
@@ -67,6 +68,7 @@ $multi = test_db($server, 'epin_multi_test', 'multi_vendor');
 app_migrate($multi);
 assert_true(migration_count($multi) === expected_migration_count('multi_vendor'), 'Multi-vendor install did not apply all migrations for its selected mode.');
 assert_true(has_table($multi, 'seller_profiles') && has_table($multi, 'seller_ledger') && has_table($multi, 'seller_withdrawals') && has_table($multi, 'seller_withdrawal_events'), 'Marketplace tables are missing.');
+assert_true(has_table($multi, 'login_attempts'), 'Login rate-limit table is missing from multi-vendor installs.');
 assert_true(has_column($multi, 'products', 'seller_id'), 'Marketplace product seller column is missing.');
 assert_true(has_index($multi, 'seller_ledger', 'uq_seller_ledger_order_entry'), 'Marketplace ledger unique index is missing.');
 assert_true(has_column($multi, 'seller_ledger', 'withdrawal_id'), 'Seller withdrawal ledger reference is missing.');
