@@ -243,3 +243,56 @@ hr{border:0;border-top:1px solid var(--line)}
 }
 @media(max-width:390px){.buy-form{grid-template-columns:minmax(0,1fr)}.buy-form button{grid-column:1}}
 @media(prefers-reduced-motion:reduce){.product-detail-image img,.buy-form button,.breadcrumbs a{transition:none!important}}
+
+/* Premium search and category filter controls. */
+.search-toolbar,.category-toolbar{
+ position:relative;display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:20px 0 26px;padding:18px;
+ border:1px solid #e3eaf4!important;border-radius:17px!important;
+ background:linear-gradient(145deg,#fff 0%,#f8fbff 100%)!important;
+ box-shadow:0 10px 28px rgba(25,42,70,.055),inset 0 1px 0 #fff!important;
+}
+.search-toolbar::before,.category-toolbar::before{content:"";position:absolute;top:0;left:18px;right:18px;height:1px;background:linear-gradient(90deg,transparent,#cbdcf8,transparent)}
+.search-toolbar input,.search-toolbar select,.category-toolbar input,.category-toolbar select{
+ min-width:0;min-height:46px;padding:11px 13px;border:1px solid #dbe4f0!important;border-radius:10px!important;
+ background:#fff!important;color:#172033!important;font:inherit;font-size:.92rem;
+ box-shadow:0 2px 5px rgba(15,23,42,.025),inset 0 1px 0 #fff;
+ transition:border-color .18s,box-shadow .18s,background .18s;
+}
+.search-toolbar input{flex:1 1 260px}
+.search-toolbar select,.category-toolbar select{min-width:165px}
+.search-toolbar input:focus,.search-toolbar select:focus,.category-toolbar input:focus,.category-toolbar select:focus{
+ outline:0;border-color:#8bb2fa!important;box-shadow:0 0 0 4px rgba(37,99,235,.10),0 2px 6px rgba(15,23,42,.03)
+}
+.search-toolbar input::placeholder,.category-toolbar input::placeholder{color:#9aa8ba}
+.category-toolbar label{display:grid;flex:1 1 145px;min-width:135px;gap:7px;color:#64748b!important;font-size:.76rem;font-weight:800;letter-spacing:.025em}
+.category-toolbar label input,.category-toolbar label select{width:100%}
+.search-toolbar button,.category-toolbar button{
+ display:inline-flex;align-items:center;justify-content:center;gap:9px;min-width:112px;min-height:46px;margin:0;padding:0 19px;
+ border:1px solid #1d4ed8;border-radius:10px;background:linear-gradient(110deg,#2563eb,#1d4ed8)!important;color:#fff!important;
+ box-shadow:0 6px 14px rgba(37,99,235,.17);font-size:.84rem;font-weight:850;letter-spacing:.025em;
+ transition:transform .18s,box-shadow .18s,filter .18s;
+}
+.search-toolbar button::after,.category-toolbar button::after{content:"↗";font-size:1rem;line-height:1}
+.search-toolbar button:hover,.category-toolbar button:hover{transform:translateY(-2px);filter:brightness(1.04);box-shadow:0 10px 20px rgba(37,99,235,.23)}
+.search-toolbar button:active,.category-toolbar button:active{transform:translateY(0) scale(.985)}
+.category-toolbar>a{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 10px;border-radius:9px;color:#64748b!important;font-size:.82rem;font-weight:750;text-decoration:none;transition:background .18s,color .18s}
+.category-toolbar>a:hover{background:#eef4ff;color:#1d4ed8!important}
+.search-toolbar input[type=search]{padding-left:42px;background-image:radial-gradient(circle at 15px 16px,transparent 5px,#64748b 5.8px,#64748b 6.8px,transparent 7.5px),linear-gradient(45deg,transparent 46%,#64748b 48%,#64748b 56%,transparent 58%);background-size:32px 32px,9px 9px;background-position:0 0,25px 24px;background-repeat:no-repeat}
+.page-head+.search-toolbar{margin-top:16px}
+.page-head+.category-toolbar{margin-top:16px}
+@media(max-width:760px){
+ .search-toolbar,.category-toolbar{gap:10px;margin:16px 0 20px;padding:13px;border-radius:14px!important}
+ .search-toolbar input,.search-toolbar select,.category-toolbar input,.category-toolbar select{min-height:45px;font-size:16px}
+ .search-toolbar input{flex-basis:100%}
+ .search-toolbar select{flex:1 1 100%}
+ .search-toolbar button,.category-toolbar button{width:100%;min-height:47px}
+ .category-toolbar label{flex:1 1 calc(50% - 6px);min-width:0}
+ .category-toolbar>a{flex:1 1 100%;justify-content:center}
+}
+@media(max-width:420px){
+ .search-toolbar,.category-toolbar{padding:11px}
+ .category-toolbar label{flex-basis:100%}
+}
+@media(prefers-reduced-motion:reduce){
+ .search-toolbar input,.search-toolbar select,.category-toolbar input,.category-toolbar select,.search-toolbar button,.category-toolbar button,.category-toolbar>a{transition:none!important}
+}

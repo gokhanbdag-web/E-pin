@@ -32,5 +32,16 @@ foreach(['Premium storefront product and category cards','linear-gradient(155deg
 foreach(["Premium product detail and purchase experience","product-detail::before","product-detail-info>.eyebrow","detail-price{display:inline-flex","buy-form button::after","stock-note{","description-panel h2"] as $needle){
  if(!str_contains($theme,$needle))throw new RuntimeException('Premium product detail contract missing: '.$needle);
 }
+foreach(["Premium search and category filter controls","search-toolbar::before","category-toolbar label{display:grid","search-toolbar input[type=search]","category-toolbar button:hover","prefers-reduced-motion:reduce"] as $needle){
+ if(!str_contains($theme,$needle))throw new RuntimeException('Premium search/filter toolbar contract missing: '.$needle);
+}
+$searchView=file_get_contents($root.'/app/views/store/search.php');
+$categoryView=file_get_contents($root.'/app/views/store/category.php');
+foreach(['name="q"','name="sort"','name="min_price"','name="max_price"','name="sort"'] as $hook){
+ if(!str_contains($searchView.$categoryView,$hook))throw new RuntimeException('Search/filter form hook missing: '.$hook);
+}
+echo "Light theme, premium navigation, slider arrows, product/category cards and premium search/filter contract checks passed.
+";
+
 echo "Light theme, premium navigation, slider arrows, product cards and product detail contract checks passed.
 ";
