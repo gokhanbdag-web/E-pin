@@ -160,12 +160,15 @@ function paytr_callback_details_valid(array $post,mixed $orderTotal):bool {
         && (int)$amount===(int)round((float)$orderTotal*100);
 }
 function iyzico_checkout_result_valid(array $result,string $orderNo,mixed $total):bool {
-    return ($result['status']??'')==='success'
-        && ($result['paymentStatus']??'')==='SUCCESS'
+    foreach(['status','paymentStatus','currency','conversationId','basketId'] as $field) {
+        if(!isset($result[$field])||!is_string($result[$field])) return false;
+    }
+    return $result['status']==='success'
+        && $result['paymentStatus']==='SUCCESS'
         && in_array($result['fraudStatus']??null,[1,'1'],true)
-        && strtoupper((string)($result['currency']??''))==='TRY'
-        && hash_equals($orderNo,(string)($result['conversationId']??''))
-        && hash_equals($orderNo,(string)($result['basketId']??''))
+        && strtoupper($result['currency'])==='TRY'
+        && hash_equals($orderNo,$result['conversationId'])
+        && hash_equals($orderNo,$result['basketId'])
         && payment_amount_matches($result['price']??null,$total)
         && payment_amount_matches($result['paidPrice']??null,$total);
 }
