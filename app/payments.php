@@ -154,6 +154,8 @@ function iyzico_checkout_result_valid(array $result,string $orderNo,mixed $total
         && in_array($result['fraudStatus']??null,[1,'1'],true)
         && strtoupper((string)($result['currency']??''))==='TRY'
         && hash_equals($orderNo,(string)($result['conversationId']??''))
+        && hash_equals($orderNo,(string)($result['basketId']??''))
+        && payment_amount_matches($result['price']??null,$total)
         && payment_amount_matches($result['paidPrice']??null,$total);
 }
 function iyzico_request(string $path,array $payload):array {
