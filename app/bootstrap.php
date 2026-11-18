@@ -55,6 +55,7 @@ function app_base_path_from_paths(string $appRoot,string $documentRoot,string $s
  return $dir===''||$dir==='.'?'':($dir[0]==='/'?$dir:'/'.$dir);
 }
 function app_base_path():string{return app_base_path_from_paths(APP_ROOT,(string)($_SERVER['DOCUMENT_ROOT']??''),(string)($_SERVER['SCRIPT_NAME']??'/'));}
+function app_is_home_path(string $path):bool{return $path===''||$path==='home';}
 function app_route_path_from_uri(string $requestUri,string $basePath):string{
  $path=parse_url($requestUri,PHP_URL_PATH)?:'/';$path=trim($path,'/');$base=trim(str_replace('\\\\','/',$basePath),'/');
  if($base!==''&&($path===$base||str_starts_with($path,$base.'/')))$path=trim(substr($path,strlen($base)),'/');

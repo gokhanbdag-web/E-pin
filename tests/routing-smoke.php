@@ -26,6 +26,7 @@ foreach($routes as [$uri,$base,$expected]){
  if($actual!==$expected)throw new RuntimeException('route '.$uri.' with base '.$base.': expected '.$expected.', got '.$actual);
 }
 
+if(!app_is_home_path('home')||!app_is_home_path('')||app_is_home_path('pc-oyunlari'))throw new RuntimeException('homepage route detection failed');
 $categoryCases=[
  ['plain category slug','pc-oyunlari','pc-oyunlari'],
  ['nested path is not a category','pc-oyunlari/alt',null],
