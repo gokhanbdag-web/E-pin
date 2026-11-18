@@ -7,12 +7,24 @@ function database_backup_chunks(PDO $pdo): Generator
         if (!preg_match('/^[A-Za-z0-9_]+$/', $name)) throw new RuntimeException('Yedekleme sırasında geçersiz tablo/alan adı bulundu.');
         return chr(96) . $name . chr(96);
     };
-    $tables = $pdo->query("SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'")->fetchAll(PDO::FETCH_NUM);
+    if ($pdo->inTransaction()) throw new RuntimeException('Tutarlı yedekleme için veritabanı bağlantısında açık işlem bulunmamalı.');
+    // A consistent snapshot is only guaranteed for transactional tables.
+    $engines = $pdo->query("SHOW TABLE STATUS")->fetchAll(PDO::FETCH_ASSOC);
+    $tables = [];
+    foreach ($engines as $tableInfo) {
+        if (($tableInfo['Engine'] ?? null) !== null && strcasecmp((string)$tableInfo['Engine'], 'InnoDB') !== 0) {
+            throw new RuntimeException('Tutarlı yedekleme için tüm tablolar InnoDB olmalı. Uyumsuz tablo: ' . (string)$tableInfo['Name']);
+        }
+        $tables[] = [(string)$tableInfo['Name']];
+    }
     if (!$tables) throw new RuntimeException('Yedeklenecek veritabanı tablosu bulunamadı.');
-    yield "-- E-pin database backup\n-- Created: " . date(DATE_ATOM) . "\n-- Restore only into a trusted, empty database.\n\n";
-    yield "SET FOREIGN_KEY_CHECKS=0;\nSET SQL_MODE='NO_AUTO_VALUE_ON_ZERO';\n\n";
-    $pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, false);
+    $pdo->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+    $pdo->exec('START TRANSACTION WITH CONSISTENT SNAPSHOT');
+    $originalBuffered = (bool)$pdo->getAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY);
     try {
+        yield "-- E-pin database backup\n-- Created: " . date(DATE_ATOM) . "\n-- Consistent InnoDB snapshot; restore only into a trusted, empty database.\n\n";
+        yield "SET FOREIGN_KEY_CHECKS=0;\nSET SQL_MODE='NO_AUTO_VALUE_ON_ZERO';\n\n";
+        $pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, false);
         foreach ($tables as $tableRow) {
             $table = (string)$tableRow[0]; $quotedTable = $quoteIdentifier($table);
             $createQuery = $pdo->query('SHOW CREATE TABLE ' . $quotedTable);
@@ -44,10 +56,11 @@ function database_backup_chunks(PDO $pdo): Generator
             }
             $select->closeCursor(); yield "-- Rows exported: " . $rowCount . "\n\n";
         }
+        yield "SET FOREIGN_KEY_CHECKS=1;\n";
     } finally {
-        $pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, true);
+        $pdo->setAttribute(PDO::MYSQL_ATTR_USE_BUFFERED_QUERY, $originalBuffered);
+        if ($pdo->inTransaction()) $pdo->rollBack();
     }
-    yield "SET FOREIGN_KEY_CHECKS=1;\n";
 }
 function stream_database_backup(PDO $pdo): never
 {
@@ -109,9 +122,23 @@ function restore_database_backup(PDO $pdo, string $filePath, int $maxBytes = 335
         $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
         return count($tablesCreated);
     } catch (Throwable $e) {
-        try { foreach (array_keys($tablesCreated) as $table) if (preg_match('/^[A-Za-z0-9_]+$/', $table)) $pdo->exec('DROP TABLE IF EXISTS ' . chr(96) . $table . chr(96)); }
-        catch (Throwable $cleanupError) { error_log('E-pin restore cleanup failed: ' . $cleanupError->getMessage()); }
-        try { $pdo->exec('SET FOREIGN_KEY_CHECKS=1'); } catch (Throwable $ignored) {}
-        throw new RuntimeException('Geri yükleme tamamlanamadı. Boş hedef veritabanında oluşturulan tablolar temizlendi. Ayrıntı: ' . $e->getMessage(), 0, $e);
+        $cleanupFailures = [];
+        foreach (array_keys($tablesCreated) as $table) {
+            if (!preg_match('/^[A-Za-z0-9_]+$/', $table)) { $cleanupFailures[] = $table; continue; }
+            try { $pdo->exec('DROP TABLE IF EXISTS ' . chr(96) . $table . chr(96)); }
+            catch (Throwable $cleanupError) {
+                $cleanupFailures[] = $table;
+                error_log('E-pin restore cleanup failed for ' . $table . ': ' . $cleanupError->getMessage());
+            }
+        }
+        try { $pdo->exec('SET FOREIGN_KEY_CHECKS=1'); }
+        catch (Throwable $foreignKeyError) {
+            $cleanupFailures[] = 'FOREIGN_KEY_CHECKS';
+            error_log('E-pin restore could not re-enable foreign key checks: ' . $foreignKeyError->getMessage());
+        }
+        $cleanupMessage = $cleanupFailures
+            ? ' Temizlik tamamlanamadı; hedef veritabanını kullanmayın ve tabloları kontrol edin: ' . implode(', ', $cleanupFailures) . '.'
+            : ' Oluşturulan tabloların tamamı temizlendi; hedef veritabanı boş.';
+        throw new RuntimeException('Geri yükleme tamamlanamadı.' . $cleanupMessage . ' Ayrıntı: ' . $e->getMessage(), 0, $e);
     }
 }
