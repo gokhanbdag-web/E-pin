@@ -19,6 +19,14 @@ $post['hash'] = base64_encode(hash_hmac('sha256', $raw, $key, true));
 
 payment_assert(paytr_signature_matches($post, $key, $salt), 'A correctly signed PayTR callback must be accepted.');
 payment_assert(!paytr_signature_matches($post, '', $salt), 'PayTR callback must be rejected when merchant credentials are missing.');
+$malformed = $post; $malformed['merchant_oid'] = ['unexpected'];
+payment_assert(!paytr_signature_matches($malformed, $key, $salt), 'PayTR callback must reject array-shaped merchant references without coercion.');
+$malformed = $post; $malformed['status'] = ['success'];
+payment_assert(!paytr_signature_matches($malformed, $key, $salt), 'PayTR callback must reject array-shaped status values.');
+$malformed = $post; $malformed['total_amount'] = ['129900'];
+payment_assert(!paytr_signature_matches($malformed, $key, $salt), 'PayTR callback must reject array-shaped amount values.');
+$malformed = $post; $malformed['hash'] = ['signature'];
+payment_assert(!paytr_signature_matches($malformed, $key, $salt), 'PayTR callback must reject array-shaped signatures.');
 payment_assert(paytr_callback_details_valid($post, '1299.00'), 'A valid success callback with the exact order amount must be accepted.');
 $failedPost = $post; $failedPost['status'] = 'failed';
 payment_assert(paytr_callback_details_valid($failedPost, '1299.00'), 'A valid failure callback with the exact order amount must be accepted.');
