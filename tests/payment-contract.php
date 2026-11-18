@@ -19,6 +19,15 @@ $post['hash'] = base64_encode(hash_hmac('sha256', $raw, $key, true));
 
 payment_assert(paytr_signature_matches($post, $key, $salt), 'A correctly signed PayTR callback must be accepted.');
 payment_assert(!paytr_signature_matches($post, '', $salt), 'PayTR callback must be rejected when merchant credentials are missing.');
+payment_assert(paytr_callback_details_valid($post, '1299.00'), 'A valid success callback with the exact order amount must be accepted.');
+$failedPost = $post; $failedPost['status'] = 'failed';
+payment_assert(paytr_callback_details_valid($failedPost, '1299.00'), 'A valid failure callback with the exact order amount must be accepted.');
+$wrongAmount = $failedPost; $wrongAmount['total_amount'] = '1';
+payment_assert(!paytr_callback_details_valid($wrongAmount, '1299.00'), 'A failure callback with a mismatched amount must be rejected.');
+$unknownStatus = $post; $unknownStatus['status'] = 'pending';
+payment_assert(!paytr_callback_details_valid($unknownStatus, '1299.00'), 'Unknown PayTR callback statuses must be rejected.');
+$decimalAmount = $post; $decimalAmount['total_amount'] = '1299.00';
+payment_assert(!paytr_callback_details_valid($decimalAmount, '1299.00'), 'PayTR callback amount must be an integer minor-unit value.');
 $tampered = $post;
 $tampered['total_amount'] = '1';
 payment_assert(!paytr_signature_matches($tampered, $key, $salt), 'A modified PayTR amount must invalidate the signature.');
