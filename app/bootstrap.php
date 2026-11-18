@@ -60,6 +60,15 @@ function app_route_path_from_uri(string $requestUri,string $basePath):string{
  if($base!==''&&($path===$base||str_starts_with($path,$base.'/')))$path=trim(substr($path,strlen($base)),'/');
  return $path;
 }
+function category_slug_is_reserved(string $slug):bool{
+ $slug=strtolower(trim($slug,'/'));
+ return $slug===''||str_contains($slug,'/')||in_array($slug,['account','admin','cart','category','checkout','forgot-password','login','logout','order','page','payment','product','reset-password','search','seller'],true);
+}
+function category_route_slug_from_path(string $path):?string{
+ $path=trim($path,'/');if($path===''||str_contains($path,'/'))return null;
+ $slug=rawurldecode($path);return category_slug_is_reserved($slug)?null:$slug;
+}
+function category_url(string $slug):string{return url(rawurlencode($slug));}
 function base_url():string{return app_base_path();}
 function url(string $path=''):string{return base_url().'/'.ltrim($path,'/');}
 function absolute_url(string $path=''):string{

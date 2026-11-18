@@ -67,7 +67,7 @@
                     <summary><?= e($menu['title']) ?></summary>
                     <div class="nav-category-dropdown">
                         <?php foreach (($categories ?? []) as $c): ?>
-                            <a href="<?= e(url('category/' . rawurlencode($c['slug']))) ?>"><?= e($c['name']) ?></a>
+                            <a href="<?= e(category_url((string)$c['slug'])) ?>"><?= e($c['name']) ?></a>
                         <?php endforeach; ?>
                     </div>
                 </details>
