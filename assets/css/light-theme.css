@@ -496,3 +496,107 @@ hr{border:0;border-top:1px solid var(--line)}
  .account-heading>.primary-link,.account-form input,.account-form textarea,.account-form button{transition:none!important}
 }
 
+/* Premium marketplace seller workspace. */
+.seller-shortcuts{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;
+ min-width:0;padding:17px;border:1px solid #e2eaf4;border-radius:15px;
+ background:linear-gradient(145deg,#fff,#f6faff);
+ box-shadow:0 8px 22px rgba(25,42,70,.045),inset 0 1px 0 #fff;
+}
+.seller-shortcuts a{
+ display:flex;align-items:center;justify-content:center;min-height:44px;padding:10px 13px;
+ border:1px solid #e2eaf4;border-radius:10px;background:#fff;color:#42536d!important;
+ font-size:.84rem;font-weight:850;text-align:center;text-decoration:none;
+ transition:transform .18s,border-color .18s,background .18s,box-shadow .18s;
+}
+.seller-shortcuts a.primary-link{
+ border-color:transparent;background:linear-gradient(105deg,#2563eb,#0f8b91)!important;
+ color:#fff!important;box-shadow:0 6px 14px rgba(37,99,235,.13);
+}
+.seller-shortcuts a:hover{transform:translateY(-2px);border-color:#bfd3f1;background:#f4f8ff}
+.seller-shortcuts a.primary-link:hover{background:linear-gradient(105deg,#1d4ed8,#0b777e)!important;box-shadow:0 10px 20px rgba(37,99,235,.2)}
+.account-page>.seller-product-form,.account-page>.seller-apply-form{
+ width:100%;max-width:none;padding:clamp(18px,3vw,26px);
+ border:1px solid #e2eaf4!important;border-radius:18px!important;
+ background:linear-gradient(150deg,#fff,#f8fbff)!important;
+ box-shadow:0 10px 28px rgba(25,42,70,.055),inset 0 1px 0 #fff;
+}
+.seller-product-form h2,.seller-apply-form h2{margin:0 0 18px;color:#22324a;font-size:1.15rem;font-weight:900;letter-spacing:-.025em}
+.seller-product-form label,.seller-apply-form label{
+ display:grid;gap:7px;margin:0 0 14px;color:#5e6e84!important;font-size:.85rem;font-weight:750;
+}
+.seller-product-form input,.seller-product-form select,.seller-product-form textarea,
+.seller-apply-form input{
+ width:100%;min-width:0;min-height:45px;margin:0;padding:11px 12px;
+ border:1px solid #dce5f0!important;border-radius:9px;background:#fff!important;
+ color:#172033!important;font:inherit;transition:border-color .18s,box-shadow .18s;
+}
+.seller-product-form textarea{min-height:96px;resize:vertical}
+.seller-product-form input:focus,.seller-product-form select:focus,.seller-product-form textarea:focus,.seller-apply-form input:focus{
+ outline:none;border-color:#7aa7f7!important;box-shadow:0 0 0 4px rgba(59,130,246,.11)
+}
+.seller-product-form .form-actions{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:18px}
+.seller-product-form .form-actions button,.seller-product-form button,.seller-apply-form button{
+ min-height:45px;padding:10px 17px;border:0;border-radius:10px;
+ background:linear-gradient(105deg,#2563eb,#0f8b91)!important;color:#fff;
+ font-size:.87rem;font-weight:900;box-shadow:0 7px 16px rgba(37,99,235,.14);
+}
+.seller-product-form .form-actions a{display:inline-flex;align-items:center;min-height:42px;padding:9px 13px;border:1px solid #e2eaf4;border-radius:9px;background:#fff;color:#526782!important;font-weight:750;text-decoration:none}
+.account-page>.account-card h2{display:flex;align-items:center;gap:10px}
+.account-page>.account-card h2::after{content:"";height:1px;flex:1;background:linear-gradient(90deg,#e5edf6,transparent)}
+.account-page>.account-card .responsive-table{
+ max-width:100%;overflow-x:auto;border:1px solid #e6edf5;border-radius:12px;background:#fff;
+ overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;
+}
+.account-page>.account-card .responsive-table table{min-width:620px}
+.account-page>.account-card .responsive-table th{
+ padding:13px 14px;background:#f6f9fd;color:#718096!important;
+ font-size:.74rem;font-weight:850;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;
+}
+.account-page>.account-card .responsive-table td{padding:13px 14px;border-bottom:1px solid #edf1f6;color:#52627a;font-size:.85rem;vertical-align:middle}
+.account-page>.account-card .responsive-table tbody tr:last-child td{border-bottom:0}
+.account-page>.account-card .responsive-table tbody tr:hover{background:#f7faff}
+.account-page>.account-card .responsive-table td a{
+ display:inline-flex;align-items:center;justify-content:center;min-height:33px;padding:7px 10px;
+ border:1px solid #dbeafe;border-radius:8px;background:#eff6ff;color:#2458b8!important;
+ font-size:.78rem;font-weight:850;text-decoration:none;white-space:nowrap;
+}
+.account-page>.account-card .responsive-table td a:hover{background:#e3efff;border-color:#bfd7ff}
+.account-page>.account-card .account-form{padding:16px;border:1px solid #e8eef6;border-radius:12px;background:#f9fbff}
+.account-page>.account-card .account-form label{display:grid;gap:7px;color:#5f6f86!important;font-size:.83rem;font-weight:750}
+.account-page>.account-card .account-form input,.account-page>.account-card .account-form select,.account-page>.account-card .account-form textarea{
+ min-width:0;min-height:43px;padding:10px 11px;border:1px solid #dce5f0!important;border-radius:9px;background:#fff!important;color:#172033!important;font:inherit;
+}
+.account-page>.account-card .account-form textarea{min-height:105px;resize:vertical}
+.account-page>.account-card .account-form button{min-height:43px;border-radius:9px;background:linear-gradient(105deg,#2563eb,#0f8b91)!important;font-weight:850}
+.account-page>.account-card .account-form[style] button{width:100%}
+.account-page>.account-card .ticket-item{padding:15px 0;border-bottom:1px solid #edf1f6}
+.account-page>.account-card .ticket-item:last-child{border-bottom:0}
+.seller-application-state{
+ position:relative;overflow:hidden;border-color:#cfe7e1!important;
+ background:linear-gradient(135deg,#f0fbf7,#fff 70%)!important;
+}
+.seller-application-state::before{content:"";position:absolute;right:-45px;top:-55px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(16,185,129,.13),transparent 70%);pointer-events:none}
+.seller-application-state>*{position:relative;z-index:1}
+.seller-application-state p{color:#617568!important;line-height:1.7}
+.seller-application-state strong{color:#087f73}
+.seller-application-state>.primary-link{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 15px;border-radius:9px;background:linear-gradient(105deg,#2563eb,#0f8b91)!important;font-weight:850}
+.seller-finance-note{padding:12px 14px;border:1px solid #dbeafe;border-radius:10px;background:#f4f8ff;color:#526782}
+@media(max-width:760px){
+ .seller-shortcuts{grid-template-columns:1fr;padding:13px}
+ .seller-shortcuts a{width:100%}
+ .account-page>.seller-product-form,.account-page>.seller-apply-form{padding:16px;border-radius:15px!important}
+ .seller-product-form .form-actions{align-items:stretch;flex-direction:column}
+ .seller-product-form .form-actions>*{width:100%;justify-content:center;text-align:center}
+ .account-page>.account-card .account-form{padding:12px}
+}
+@media(max-width:420px){
+ .seller-shortcuts{gap:8px}
+ .seller-shortcuts a{min-height:43px;font-size:.82rem}
+ .seller-product-form input,.seller-product-form select,.seller-product-form textarea,.seller-apply-form input{font-size:16px}
+ .account-page>.account-card{padding:15px}
+}
+@media(prefers-reduced-motion:reduce){
+ .seller-shortcuts a,.seller-product-form input,.seller-product-form select,.seller-product-form textarea,.seller-apply-form input{transition:none!important}
+}
+

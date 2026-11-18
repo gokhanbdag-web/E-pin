@@ -59,5 +59,16 @@ foreach(['Premium customer account dashboard','.account-heading{','account-stats
 foreach(['account-page','account-stats','account-form','account/profile','account/password','Siparişlerim','account/ticket','Destek geçmişim','name="_token"'] as $hook){
  if(!str_contains($account,$hook))throw new RuntimeException('Customer account dashboard hook missing: '.$hook);
 }
+$sellerDashboard=file_get_contents($root.'/app/views/seller/dashboard.php');
+$sellerProducts=file_get_contents($root.'/app/views/seller/products.php');
+$sellerOrders=file_get_contents($root.'/app/views/seller/orders.php');
+$sellerEarnings=file_get_contents($root.'/app/views/seller/earnings.php');
+$sellerApply=file_get_contents($root.'/app/views/seller/apply.php');
+foreach(['Premium marketplace seller workspace','.seller-shortcuts{','.seller-product-form h2','.account-page>.account-card .responsive-table tbody tr:hover','.seller-application-state::before','prefers-reduced-motion:reduce'] as $needle){
+ if(!str_contains($theme,$needle))throw new RuntimeException('Premium seller workspace style contract missing: '.$needle);
+}
+foreach([['dashboard',$sellerDashboard,['seller-shortcuts','seller/products','seller/orders','seller/earnings','pendingEarnings','availableBalance']],['products',$sellerProducts,['seller-product-form','save_product','save_variant','import_codes','name="codes"','seller/products?edit=']],['orders',$sellerOrders,['Satış siparişleri','sellerOrders','payment_status','automatic_delivered']],['earnings',$sellerEarnings,['Kazançlarım','withdrawalRows','ledgerRows','name="amount"','name="note"']],['apply',$sellerApply,['seller-apply-form','sellerApplication','shop_name','_token']]] as [$name,$view,$hooks]){
+ foreach($hooks as $hook)if(!str_contains($view,$hook))throw new RuntimeException('Seller '.$name.' workflow hook missing: '.$hook);
+}
 echo "Light theme, premium navigation, slider arrows, product cards and product detail contract checks passed.
 ";
