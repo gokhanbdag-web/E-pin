@@ -55,6 +55,13 @@ $single = test_db($server, 'epin_single_test', 'single_vendor');
 app_migrate($single);
 assert_true(migration_count($single) === expected_migration_count('single_vendor'), 'Single-vendor install did not apply all migrations for its selected mode.');
 assert_true(has_table($single, 'products') && has_table($single, 'inventory_codes'), 'Core and extended tables are missing.');
+assert_true(has_table($single, 'paykwik_exchange_rates'), 'Paykwik exchange-rate table is missing.');
+assert_true(has_column($single, 'products', 'paykwik_eur_amount') && has_column($single, 'products', 'paykwik_margin_percent') && has_column($single, 'products', 'paykwik_enabled'), 'Paykwik pricing fields are missing.');
+$paykwikRows=$single->query("SELECT paykwik_eur_amount,paykwik_margin_percent,price,status FROM products WHERE paykwik_enabled=1 ORDER BY paykwik_eur_amount")->fetchAll(PDO::FETCH_ASSOC);
+assert_true(count($paykwikRows)===7, 'Migration must create all seven Paykwik denominations.');
+$expectedEuro=[10.0,20.0,50.0,100.0,250.0,500.0,1000.0];
+foreach($paykwikRows as $index=>$row){assert_true((float)$row['paykwik_eur_amount']===$expectedEuro[$index], 'Paykwik denomination order or amount is incorrect.');assert_true((float)$row['paykwik_margin_percent']===20.0, 'Initial Paykwik margin must be 20 percent.');assert_true($row['status']==='active', 'Paykwik products must be published.');}
+
 assert_true(has_table($single, 'login_attempts'), 'Login rate-limit table is missing from single-vendor installs.');
 assert_true(!has_table($single, 'seller_profiles'), 'Single-vendor install must not create marketplace tables.');
 // Capture the selected mode's actual applied version count; later migrations may
