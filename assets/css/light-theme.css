@@ -659,3 +659,41 @@ hr{border:0;border-top:1px solid var(--line)}
 }
 .admin-content .slider-delete{border-color:#e8edf4!important}
 .admin-content .status,.admin-content .badge{color:#334155}
+
+
+/* Product catalogue and editor: keep all controls inside the viewport. */
+.admin-page-products .admin-content{min-width:0;max-width:100%;overflow-x:clip}
+.admin-page-products .page-head{min-width:0;flex-wrap:wrap}
+.admin-page-products .page-head>div{min-width:0}
+.admin-page-products .admin-form{
+ width:100%;max-width:none;min-width:0;box-sizing:border-box;
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:18px;row-gap:4px;
+}
+.admin-page-products .admin-form>label{min-width:0;overflow-wrap:anywhere}
+.admin-page-products .admin-form>label:has(textarea),
+.admin-page-products .admin-form>label:has(input[type="file"]),
+.admin-page-products .admin-form>label:has(.admin-image-preview){grid-column:1/-1}
+.admin-page-products .admin-form input,
+.admin-page-products .admin-form select,
+.admin-page-products .admin-form textarea{box-sizing:border-box;max-width:100%;min-width:0}
+.admin-page-products .admin-image-preview{width:min(100%,360px);height:auto;min-height:120px;aspect-ratio:16/9}
+.admin-page-products .admin-image-preview img{width:100%;height:100%;max-height:240px;object-fit:contain}
+.admin-page-products .admin-form>.form-actions{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.admin-page-products .table-wrap{width:100%;max-width:100%;min-width:0;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.admin-page-products .table-wrap table{width:100%;min-width:620px}
+.admin-page-products .actions{flex-wrap:wrap;min-width:110px}
+.admin-page-products .actions form{display:inline-flex;align-items:center}
+@media(max-width:760px){
+ .admin-page-products .page-head{gap:12px}
+ .admin-page-products .page-head>.primary-link{max-width:100%;white-space:normal;text-align:center}
+ .admin-page-products .admin-form{grid-template-columns:minmax(0,1fr);padding:14px;gap:0}
+ .admin-page-products .admin-form>label:has(textarea),
+ .admin-page-products .admin-form>label:has(input[type="file"]),
+ .admin-page-products .admin-form>label:has(.admin-image-preview){grid-column:1}
+ .admin-page-products .admin-form>.form-actions{position:static;grid-column:1;display:grid;grid-template-columns:minmax(0,1fr);gap:9px}
+ .admin-page-products .admin-form>.form-actions button,
+ .admin-page-products .admin-form>.form-actions a{width:100%;max-width:100%;min-width:0;box-sizing:border-box;text-align:center}
+ .admin-page-products .table-wrap{margin-right:0}
+ .admin-page-products .table-wrap table{min-width:600px}
+ .admin-page-products .admin-image-preview{width:100%;max-width:100%}
+}
