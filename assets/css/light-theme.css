@@ -74,7 +74,7 @@ tbody tr:hover{background:#f8fbff}
 hr{border:0;border-top:1px solid var(--line)}
 @media(max-width:800px){
  .admin-shell{grid-template-columns:minmax(0,1fr)!important}
- .admin-side{position:static!important}
+ .admin-side:not(.is-open){position:static!important}
  .page-head{align-items:flex-start;flex-wrap:wrap}
  .stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
@@ -600,3 +600,61 @@ hr{border:0;border-top:1px solid var(--line)}
  .seller-shortcuts a,.seller-product-form input,.seller-product-form select,.seller-product-form textarea,.seller-apply-form input{transition:none!important}
 }
 
+
+
+/* Admin panel: preserve drawer stacking and readable contrast in the light theme. */
+@media(max-width:760px){
+ .admin-side.is-open{
+  position:fixed!important;z-index:120!important;top:62px!important;bottom:0!important;left:0!important;
+  display:grid!important;width:min(82vw,310px)!important;max-height:none!important;overflow-y:auto!important;
+  background:#fff!important;color:#172033!important;transform:translateX(0)!important;
+  visibility:visible!important;pointer-events:auto!important;
+ }
+ .admin-nav-backdrop.is-visible{
+  position:fixed!important;z-index:110!important;inset:62px 0 0!important;display:block!important;pointer-events:auto!important;
+ }
+ .admin-topbar{position:sticky;z-index:130}
+ .admin-menu-toggle{position:relative;z-index:131}
+}
+.admin-body,.admin-content{color:#172033!important}
+.admin-content .page-head,.admin-content .page-head p,
+.admin-content .admin-panel,.admin-content .admin-panel p,.admin-content .admin-panel li,.admin-content .admin-panel label,
+.admin-content .admin-form,.admin-content .admin-form label,.admin-content .admin-form p,.admin-content .admin-form small,
+.admin-content .muted,.admin-content .panel-heading,.admin-content .panel-heading p,
+.admin-content .report-filter,.admin-content .report-filter label,
+.admin-content .ticket-admin-card,.admin-content .ticket-admin-card p,
+.admin-content .seller-admin-card,.admin-content .seller-admin-card p{color:#26364e!important}
+.admin-content .page-head h1,.admin-content .admin-panel h1,.admin-content .admin-panel h2,.admin-content .admin-panel h3,
+.admin-content .admin-form h1,.admin-content .admin-form h2,.admin-content .admin-form h3,
+.admin-content .stat-card strong{color:#172033!important}
+.admin-content .admin-form input,.admin-content .admin-form select,.admin-content .admin-form textarea,
+.admin-content .ticket-admin-form select,.admin-content .ticket-admin-form textarea{
+ background:#fff!important;color:#172033!important;border-color:#d5deea!important
+}
+.admin-content .admin-form input::placeholder,.admin-content .admin-form textarea::placeholder{color:#8492a6!important}
+.admin-content .table-wrap,.admin-content table{background:#fff!important;color:#26364e!important}
+.admin-content th{background:#f8fafc!important;color:#64748b!important}
+.admin-content td{color:#334155!important}
+.admin-content .slider-manager-help{color:#536176!important}
+.admin-content .slider-manager-card{
+ background:linear-gradient(150deg,#fff,#f8fbff)!important;border-color:#e2eaf4!important;color:#26364e!important
+}
+.admin-content .slider-manager-card-head{border-color:#e2eaf4!important}
+.admin-content .slider-manager-card-head h2{color:#172033!important}
+.admin-content .slider-manager-card-head .slider-toggle,.admin-content .slider-delete,
+.admin-content .slider-manager-grid label{color:#52627a!important}
+.admin-content .slider-manager-grid input,.admin-content .slider-manager-grid textarea,.admin-content .slider-manager-grid select{
+ background:#fff!important;color:#172033!important;border-color:#d5deea!important
+}
+.admin-content .slider-manager-grid small{color:#718096!important}
+.admin-content .slider-manager-preview{background:#eaf0f7!important}
+.admin-content .slider-manager-preview small{background:#172033e8!important;color:#fff!important}
+.admin-content .slider-manager-form>.form-actions{
+ background:rgba(255,255,255,.96)!important;border-color:#e2eaf4!important;box-shadow:0 8px 24px rgba(20,35,65,.08)
+}
+.admin-content .slider-manager-form>.form-actions a{color:#2563eb!important}
+.admin-content .slider-drag-handle,.admin-content .slider-move-buttons button{
+ background:#eef4ff!important;color:#334155!important;border-color:#d5deea!important
+}
+.admin-content .slider-delete{border-color:#e8edf4!important}
+.admin-content .status,.admin-content .badge{color:#334155}
