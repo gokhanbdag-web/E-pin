@@ -190,3 +190,34 @@ function iyzico_request(string $path,array $payload):array {
     if(!is_array($decoded)) throw new RuntimeException('iyzico geçersiz yanıt döndürdü (HTTP '.$status.').');
     return $decoded+['_http_status'=>$status];
 }
+
+
+/**
+ * Apply an administrator's refund decision and persist its audit event atomically.
+ * The caller owns the surrounding database transaction.
+ */
+function refund_transition(PDO $pdo,int $refundId,string $decision,?int $adminUserId,string $note=''):array {
+    if(!$pdo->inTransaction()) throw new RuntimeException('İade kararı bir veritabanı işlemi içinde kaydedilmelidir.');
+    if(!in_array($decision,['approved','rejected','processed'],true)) throw new RuntimeException('Geçersiz iade kararı.');
+    $note=substr(trim($note),0,1000);
+    $q=$pdo->prepare('SELECT r.id,r.order_id,r.status,o.payment_status FROM refund_requests r JOIN orders o ON o.id=r.order_id WHERE r.id=? FOR UPDATE');
+    $q->execute([$refundId]);$refund=$q->fetch();
+    if(!$refund) throw new RuntimeException('İade talebi bulunamadı.');
+    $allowed=['requested'=>['approved','rejected'],'approved'=>['processed']];
+    if(!in_array($decision,$allowed[$refund['status']]??[],true)) throw new RuntimeException('Bu iade talebi bu aşamadan ilerletilemez.');
+    if($decision==='processed'&&$refund['payment_status']!=='paid') throw new RuntimeException('Ödenmiş olmayan sipariş iade edildi olarak işaretlenemez.');
+    if($decision==='processed'){
+        $q=$pdo->prepare("SELECT (SELECT COUNT(*) FROM inventory_codes WHERE sold_order_id=? AND status='sold')+(SELECT COUNT(*) FROM order_deliveries WHERE order_id=?)");
+        $q->execute([(int)$refund['order_id'],(int)$refund['order_id']]);
+        if((int)$q->fetchColumn()>0) throw new RuntimeException('Dijital kod teslim edilmiş sipariş iade edildi olarak işaretlenemez.');
+    }
+    $pdo->prepare('UPDATE refund_requests SET status=?,admin_note=? WHERE id=?')->execute([$decision,$note,$refundId]);
+    $pdo->prepare('INSERT INTO refund_request_events(refund_id,admin_user_id,from_status,to_status,note) VALUES(?,?,?,?,?)')
+        ->execute([$refundId,$adminUserId,$refund['status'],$decision,$note!==''?$note:null]);
+    if($decision==='processed'){
+        seller_reverse_refunded_order((int)$refund['order_id']);
+        $pdo->prepare("UPDATE orders SET status='refunded' WHERE id=?")->execute([(int)$refund['order_id']]);
+        $pdo->prepare("UPDATE payment_transactions SET status='refund_recorded' WHERE order_id=? AND status IN ('paid','success')")->execute([(int)$refund['order_id']]);
+    }
+    return ['refund_id'=>(int)$refundId,'order_id'=>(int)$refund['order_id'],'from_status'=>$refund['status'],'to_status'=>$decision];
+}
