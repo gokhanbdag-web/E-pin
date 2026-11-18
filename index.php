@@ -117,8 +117,8 @@ if($path==='forgot-password'&&$_SERVER['REQUEST_METHOD']==='POST'){
      $site=(string)(db()->query("SELECT setting_value FROM settings WHERE setting_key='site_title'")->fetchColumn()?:'E-pin');
      $host=(string)(parse_url((string)(db()->query("SELECT setting_value FROM settings WHERE setting_key='site_url'")->fetchColumn()),PHP_URL_HOST)?:'localhost');
      $from='no-reply@'.$host;$subject='=?UTF-8?B?'.base64_encode('Şifre yenileme bağlantısı').'?=';
-     $body='<p>Merhaba '.e($account['name']).',</p><p>'.$site.' hesabınız için şifre yenileme talebi aldık.</p><p><a href="'.e($resetUrl).'">Şifremi yenile</a></p><p>Bu bağlantı 1 saat geçerlidir. Talebi siz yapmadıysanız bu e-postayı dikkate almayın.</p>';
-     $headers="MIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\nFrom: ".str_replace(["\r","\n"],'',$site)." <".$from.">";
+     $body='<p>Merhaba '.e($account['name']).',</p><p>'.e($site).' hesabınız için şifre yenileme talebi aldık.</p><p><a href="'.e($resetUrl).'">Şifremi yenile</a></p><p>Bu bağlantı 1 saat geçerlidir. Talebi siz yapmadıysanız bu e-postayı dikkate almayın.</p>';
+     $headers="MIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\nFrom: ".$from;
      if(!mail($account['email'],$subject,$body,$headers)){
       $pdo->prepare('DELETE FROM password_resets WHERE token_hash=?')->execute([$tokenHash]);
       error_log('E-pin password recovery email could not be sent.');
