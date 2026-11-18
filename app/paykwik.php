@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const PAYKWIK_Tcmb_URL = 'https://www.tcmb.gov.tr/kurlar/today.xml';
+const PAYKWIK_TCMB_URL = 'https://www.tcmb.gov.tr/kurlar/today.xml';
 
 function paykwik_calculate_price(float $eurAmount, float $rate, float $marginPercent): float {
     if (!is_finite($eurAmount) || !is_finite($rate) || !is_finite($marginPercent) || $eurAmount <= 0 || $rate <= 0 || $marginPercent < 0 || $marginPercent > 500) {
@@ -13,7 +13,7 @@ function paykwik_calculate_price(float $eurAmount, float $rate, float $marginPer
 function paykwik_fetch_tcmb_rate(): array {
     $body = false;
     if (function_exists('curl_init')) {
-        $ch = curl_init(PAYKWIK_Tcmb_URL);
+        $ch = curl_init(PAYKWIK_TCMB_URL);
         curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => false, CURLOPT_CONNECTTIMEOUT => 4, CURLOPT_TIMEOUT => 8, CURLOPT_SSL_VERIFYPEER => true, CURLOPT_SSL_VERIFYHOST => 2, CURLOPT_USERAGENT => 'E-pin Paykwik pricing']);
         $body = curl_exec($ch);
         $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -21,7 +21,7 @@ function paykwik_fetch_tcmb_rate(): array {
         if ($body === false || $status !== 200) throw new RuntimeException('TCMB kur servisine şu anda ulaşılamıyor.');
     } else {
         $context = stream_context_create(['http' => ['timeout' => 8, 'follow_location' => 0, 'header' => "User-Agent: E-pin Paykwik pricing\r\n"], 'ssl' => ['verify_peer' => true, 'verify_peer_name' => true]]);
-        $body = @file_get_contents(PAYKWIK_Tcmb_URL, false, $context);
+        $body = @file_get_contents(PAYKWIK_TCMB_URL, false, $context);
         if (!is_string($body) || $body === '') throw new RuntimeException('TCMB kur servisine şu anda ulaşılamıyor.');
     }
     if (strlen($body) > 1048576) throw new RuntimeException('TCMB kur yanıtı beklenen boyutu aşıyor.');
@@ -36,7 +36,7 @@ function paykwik_fetch_tcmb_rate(): array {
     $dateRaw = (string) ($xml['Tarih'] ?? '');
     $rateDate = DateTimeImmutable::createFromFormat('d.m.Y', $dateRaw);
     if ($rate <= 0 || !$rateDate) throw new RuntimeException('TCMB Euro satış kuru yanıt içinde bulunamadı.');
-    return ['currency' => 'EUR', 'rate' => $rate, 'rate_type' => 'ForexSelling', 'rate_date' => $rateDate->format('Y-m-d'), 'fetched_at' => date('Y-m-d H:i:s'), 'source_url' => PAYKWIK_Tcmb_URL];
+    return ['currency' => 'EUR', 'rate' => $rate, 'rate_type' => 'ForexSelling', 'rate_date' => $rateDate->format('Y-m-d'), 'fetched_at' => date('Y-m-d H:i:s'), 'source_url' => PAYKWIK_TCMB_URL];
 }
 
 function paykwik_store_rate(PDO $pdo, array $rate): void {
@@ -53,6 +53,7 @@ function paykwik_latest_rate(PDO $pdo, bool $refreshIfNewDay = true): ?array {
     $attempt->execute();
     $lastAttempt = (string) ($attempt->fetchColumn() ?: '');
     $shouldRefresh = $refreshIfNewDay && (!$cached || ($cached['rate_date'] < $today && $now->format('H:i') >= '15:35' && $lastAttempt !== $today));
+    if ($cached && $cached['rate_date'] < $today && $lastAttempt === $today) $cached['stale'] = true;
     if ($shouldRefresh) {
         $pdo->prepare("INSERT INTO settings(setting_key,setting_value) VALUES('paykwik_rate_last_attempt',?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)")->execute([$now->format('Y-m-d H:i:s')]);
         try {
