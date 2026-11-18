@@ -298,7 +298,7 @@ if($categorySlug!==null){
   render('store/category',['title'=>$category['name'],'category'=>$category,'products'=>$products,'categorySort'=>$sort,'minPrice'=>$minPrice,'maxPrice'=>$maxPrice]);exit;
  }
 }
-if($path!==''){http_response_code(404);render('store/not-found',['title'=>'Sayfa bulunamadı']);exit;}
+if(!app_is_home_path($path)){http_response_code(404);render('store/not-found',['title'=>'Sayfa bulunamadı']);exit;}
 $settings=[];foreach(db()->query('SELECT setting_key,setting_value FROM settings')->fetchAll() as $r)$settings[$r['setting_key']]=$r['setting_value'];
 $categories=db()->query("SELECT id,name,slug FROM categories WHERE status='active' ORDER BY sort_order,name")->fetchAll();
 $products=db()->query("SELECT id,name,slug,short_description,price,image FROM products WHERE status='active' ORDER BY sort_order,id DESC LIMIT 24")->fetchAll();
