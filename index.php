@@ -100,6 +100,56 @@ if($path==='login'&&$_SERVER['REQUEST_METHOD']==='POST'){
  }
  login_record_failure($pdo,$email,$ip);flash('error','Giriş bilgileri doğrulanamadı.');redirect(url('login'));
 }
+
+if($path==='forgot-password'&&$_SERVER['REQUEST_METHOD']==='POST'){
+ csrf_check();$email=strtolower(trim((string)($_POST['email']??'')));$generic='E-posta adresi sistemimizde kayıtlıysa şifre yenileme bağlantısı gönderilecektir.';
+ if(filter_var($email,FILTER_VALIDATE_EMAIL)&&strlen($email)<=190){
+  try{
+   $pdo=db();$pdo->exec("DELETE FROM password_resets WHERE created_at<DATE_SUB(NOW(),INTERVAL 2 DAY) LIMIT 200");$ip=(string)($_SERVER['REMOTE_ADDR']??'unknown');$ipHash=hash_hmac('sha256',$ip,(string)config('app_key'));$emailHash=hash_hmac('sha256',$email,(string)config('app_key'));
+   $limit=$pdo->prepare('SELECT COUNT(*) FROM password_resets WHERE (email_hash=? OR ip_hash=?) AND created_at>=DATE_SUB(NOW(),INTERVAL 1 HOUR)');$limit->execute([$emailHash,$ipHash]);
+   if((int)$limit->fetchColumn()<5){
+    $q=$pdo->prepare("SELECT id,name,email FROM users WHERE email=? AND status='active' LIMIT 1");$q->execute([$email]);$account=$q->fetch();
+    if($account){
+     $token=bin2hex(random_bytes(32));$tokenHash=hash('sha256',$token);
+     $pdo->prepare('UPDATE password_resets SET used_at=NOW() WHERE user_id=? AND used_at IS NULL')->execute([(int)$account['id']]);
+     $pdo->prepare('INSERT INTO password_resets(user_id,email_hash,ip_hash,token_hash,expires_at) VALUES(?,?,?,?,DATE_ADD(NOW(),INTERVAL 1 HOUR))')->execute([(int)$account['id'],$emailHash,$ipHash,$tokenHash]);
+     $resetUrl=absolute_url('reset-password?token='.rawurlencode($token));
+     $site=(string)(db()->query("SELECT setting_value FROM settings WHERE setting_key='site_title'")->fetchColumn()?:'E-pin');
+     $host=(string)(parse_url((string)(db()->query("SELECT setting_value FROM settings WHERE setting_key='site_url'")->fetchColumn()),PHP_URL_HOST)?:'localhost');
+     $from='no-reply@'.$host;$subject='=?UTF-8?B?'.base64_encode('Şifre yenileme bağlantısı').'?=';
+     $body='<p>Merhaba '.e($account['name']).',</p><p>'.e($site).' hesabınız için şifre yenileme talebi aldık.</p><p><a href="'.e($resetUrl).'">Şifremi yenile</a></p><p>Bu bağlantı 1 saat geçerlidir. Talebi siz yapmadıysanız bu e-postayı dikkate almayın.</p>';
+     $headers="MIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\nFrom: ".$from;
+     if(!mail($account['email'],$subject,$body,$headers)){
+      $pdo->prepare('UPDATE password_resets SET used_at=NOW() WHERE token_hash=?')->execute([$tokenHash]);
+      error_log('E-pin password recovery email could not be sent.');
+     }
+    }
+   }
+  }catch(Throwable $e){error_log('E-pin password recovery request failed: '.$e->getMessage());}
+ }
+ flash('success',$generic);redirect(url('forgot-password'));
+}
+if($path==='forgot-password'){render('auth/forgot-password',['title'=>'Şifremi unuttum']);exit;}
+if($path==='reset-password'&&$_SERVER['REQUEST_METHOD']==='POST'){
+ csrf_check();$token=(string)($_POST['token']??'');$new=(string)($_POST['password']??'');$confirm=(string)($_POST['password_confirm']??'');
+ if(strlen($new)<10||strlen($new)>4096||$new!==$confirm){flash('error','Şifre en az 10 karakter olmalı ve tekrarıyla eşleşmelidir.');redirect(url('reset-password?token='.rawurlencode($token)));}
+ try{
+  if(!preg_match('/^[a-f0-9]{64}$/',$token))throw new RuntimeException('Bu şifre yenileme bağlantısı geçersiz veya süresi dolmuş.');
+  $pdo=db();$pdo->beginTransaction();
+  $q=$pdo->prepare('SELECT id,user_id FROM password_resets WHERE token_hash=? AND used_at IS NULL AND expires_at>NOW() LIMIT 1 FOR UPDATE');$q->execute([hash('sha256',$token)]);$reset=$q->fetch();
+  if(!$reset)throw new RuntimeException('Bu şifre yenileme bağlantısı geçersiz veya süresi dolmuş.');
+  $update=$pdo->prepare("UPDATE users SET password_hash=? WHERE id=? AND status='active'");$update->execute([password_hash($new,PASSWORD_DEFAULT),(int)$reset['user_id']]);
+  if($update->rowCount()!==1)throw new RuntimeException('Hesap bulunamadı veya kullanıma kapalı.');
+  $pdo->prepare('UPDATE password_resets SET used_at=NOW() WHERE user_id=? AND used_at IS NULL')->execute([(int)$reset['user_id']]);
+  $pdo->commit();session_regenerate_id(true);flash('success','Şifreniz yenilendi. Yeni şifrenizle giriş yapabilirsiniz.');redirect(url('login'));
+ }catch(Throwable $e){if(isset($pdo)&&$pdo->inTransaction())$pdo->rollBack();flash('error',$e->getMessage());redirect(url('reset-password?token='.rawurlencode($token)));}
+}
+if($path==='reset-password'){
+ $token=(string)($_GET['token']??'');$valid=false;
+ if(preg_match('/^[a-f0-9]{64}$/',$token)){try{$q=db()->prepare('SELECT 1 FROM password_resets WHERE token_hash=? AND used_at IS NULL AND expires_at>NOW() LIMIT 1');$q->execute([hash('sha256',$token)]);$valid=(bool)$q->fetchColumn();}catch(Throwable $e){error_log('E-pin password reset validation failed: '.$e->getMessage());}}
+ render('auth/reset-password',['title'=>'Yeni şifre belirle','resetToken'=>$valid?$token:'','resetValid'=>$valid]);exit;
+}
+
 if($path==='login'){render('auth/login',['title'=>'Giriş yap']);exit;}
 if($path==='admin'||str_starts_with($path,'admin/')){require APP_ROOT.'/app/admin.php';exit;}
 if($path==='seller/apply'){
