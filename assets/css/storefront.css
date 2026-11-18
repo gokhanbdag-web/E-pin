@@ -374,3 +374,29 @@
 @media(prefers-reduced-motion:reduce){
  .product-link,.product-image img{transition:none!important}
 }
+
+
+/* Mobile menu scroll fix: keep the menu viewport-bound and independently scrollable. */
+@media(max-width:760px){
+ .storefront-header>.storefront-navigation{
+  position:fixed!important;
+  top:var(--storefront-menu-top,120px)!important;
+  left:0!important;
+  right:0!important;
+  width:100%!important;
+  height:auto!important;
+  max-height:var(--storefront-menu-max-height,calc(100dvh - 132px))!important;
+  min-height:0!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  -webkit-overflow-scrolling:touch!important;
+  overscroll-behavior-y:contain!important;
+  touch-action:pan-y!important;
+  flex:0 1 auto!important;
+  padding-bottom:max(14px,env(safe-area-inset-bottom))!important;
+  transform:translateY(-10px);
+ }
+ .storefront-header>.storefront-navigation.is-open{
+  transform:translateY(0);
+ }
+}
