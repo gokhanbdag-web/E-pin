@@ -43,5 +43,14 @@ foreach(['name="q"','name="sort"','name="min_price"','name="max_price"','name="s
 echo "Light theme, premium navigation, slider arrows, product/category cards and premium search/filter contract checks passed.
 ";
 
+$cart=file_get_contents($root.'/app/views/store/cart.php');
+$checkout=file_get_contents($root.'/app/views/store/checkout.php');
+$order=file_get_contents($root.'/app/views/store/order.php');
+foreach(['Premium cart, checkout and order journey','cart-line:hover','cart-summary>.primary-link','checkout-panel::before','order-panel>.admin-form','order-panel>.delivered-code','prefers-reduced-motion:reduce'] as $needle){
+ if(!str_contains($theme,$needle))throw new RuntimeException('Premium cart/checkout/order style contract missing: '.$needle);
+}
+foreach([['cart',$cart,['cart-layout','cart-line','cart-summary','coupon-form','cart/remove','cart/coupon']],['checkout',$checkout,['checkout-panel','_token','Siparişi oluştur']],['order',$order,['order-panel','payment/start/','name="provider"','delivered-code','refund_request']]] as [$name,$view,$hooks]){
+ foreach($hooks as $hook)if(!str_contains($view,$hook))throw new RuntimeException('Cart/checkout/order '.$name.' contract missing: '.$hook);
+}
 echo "Light theme, premium navigation, slider arrows, product cards and product detail contract checks passed.
 ";
