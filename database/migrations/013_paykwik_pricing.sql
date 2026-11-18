@@ -33,9 +33,9 @@ ON DUPLICATE KEY UPDATE rate=VALUES(rate),rate_type=VALUES(rate_type),fetched_at
 
 -- Remove demo wording from previously seeded customer-facing content without deleting store data.
 UPDATE products SET
- short_description=REPLACE(REPLACE(REPLACE(REPLACE(short_description,'demo',''), 'Demo',''), 'DEMO',''), 'örnek ürün sayfası','ürün sayfası'),
- description=REPLACE(REPLACE(REPLACE(REPLACE(description,'demo',''), 'Demo',''), 'DEMO',''), 'örnek','');
-UPDATE pages SET content=REPLACE(REPLACE(REPLACE(REPLACE(content,'demo',''), 'Demo',''), 'DEMO',''), 'örnek','');
+ short_description=REPLACE(REPLACE(REPLACE(short_description,'demo',''), 'Demo',''), 'DEMO',''),
+ description=REPLACE(REPLACE(REPLACE(description,'demo',''), 'Demo',''), 'DEMO','');
+UPDATE pages SET content=REPLACE(REPLACE(REPLACE(content,'demo',''), 'Demo',''), 'DEMO','');
 UPDATE settings SET setting_value=REPLACE(REPLACE(REPLACE(setting_value,'demo',''), 'Demo',''), 'DEMO','')
 WHERE setting_key IN ('home_description','footer_text','slider_slides_json');
 UPDATE product_variants SET sku=REPLACE(sku,'DEMO-','EPIN-') WHERE sku LIKE 'DEMO-%';
