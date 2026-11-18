@@ -57,6 +57,8 @@ jobs:
         run: php tests/backup-restore-integration.php
       - name: Light theme and premium mobile navigation contract tests
         run: php tests/light-theme-contract.php
+      - name: Mobile navigation scroll contract tests
+        run: php tests/mobile-navigation-scroll-contract.php
       - name: Customer password recovery contract tests
         run: php tests/password-recovery-contract.php
       - name: Login rate-limit integration tests
