@@ -105,7 +105,7 @@ if($path==='forgot-password'&&$_SERVER['REQUEST_METHOD']==='POST'){
  csrf_check();$email=strtolower(trim((string)($_POST['email']??'')));$generic='E-posta adresi sistemimizde kayıtlıysa şifre yenileme bağlantısı gönderilecektir.';
  if(filter_var($email,FILTER_VALIDATE_EMAIL)&&strlen($email)<=190){
   try{
-   $pdo=db();$ip=(string)($_SERVER['REMOTE_ADDR']??'unknown');$ipHash=hash_hmac('sha256',$ip,(string)config('app_key'));$emailHash=hash_hmac('sha256',$email,(string)config('app_key'));
+   $pdo=db();$pdo->exec("DELETE FROM password_resets WHERE created_at<DATE_SUB(NOW(),INTERVAL 2 DAY) LIMIT 200");$ip=(string)($_SERVER['REMOTE_ADDR']??'unknown');$ipHash=hash_hmac('sha256',$ip,(string)config('app_key'));$emailHash=hash_hmac('sha256',$email,(string)config('app_key'));
    $limit=$pdo->prepare('SELECT COUNT(*) FROM password_resets WHERE (email_hash=? OR ip_hash=?) AND created_at>=DATE_SUB(NOW(),INTERVAL 1 HOUR)');$limit->execute([$emailHash,$ipHash]);
    if((int)$limit->fetchColumn()<5){
     $q=$pdo->prepare("SELECT id,name,email FROM users WHERE email=? AND status='active' LIMIT 1");$q->execute([$email]);$account=$q->fetch();
@@ -120,7 +120,7 @@ if($path==='forgot-password'&&$_SERVER['REQUEST_METHOD']==='POST'){
      $body='<p>Merhaba '.e($account['name']).',</p><p>'.e($site).' hesabınız için şifre yenileme talebi aldık.</p><p><a href="'.e($resetUrl).'">Şifremi yenile</a></p><p>Bu bağlantı 1 saat geçerlidir. Talebi siz yapmadıysanız bu e-postayı dikkate almayın.</p>';
      $headers="MIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\nFrom: ".$from;
      if(!mail($account['email'],$subject,$body,$headers)){
-      $pdo->prepare('DELETE FROM password_resets WHERE token_hash=?')->execute([$tokenHash]);
+      $pdo->prepare('UPDATE password_resets SET used_at=NOW() WHERE token_hash=?')->execute([$tokenHash]);
       error_log('E-pin password recovery email could not be sent.');
      }
     }
