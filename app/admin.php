@@ -3,12 +3,6 @@ declare(strict_types=1);
 require_login('admin');
 require_once APP_ROOT.'/app/paykwik.php';
 $resource=(string)($_GET['section']??'overview');
-$demoHeroSlides=[
- ['id'=>'demo-cyberpunk','title'=>'GELECEĞİNİ KENDİN YAZ','description'=>'Oyun dünyasının en büyük maceralarına hazırlan. Dijital oyun bakiyeni tamamla, sıradaki hikâyene hemen başla.','image'=>'https://cdn.akamai.steamstatic.com/steam/apps/1091500/library_hero.jpg','link'=>'product/steam-cuzdan-250','button'=>'ŞİMDİ SATIN AL','sort_order'=>1,'position_x'=>50,'position_y'=>50,'effect'=>'zoom','active'=>1],
- ['id'=>'demo-forza','title'=>'HIZ KESMEDEN DEVAM ET','description'=>'Xbox dünyasının kapılarını aç. Game Pass ve dijital ürün seçeneklerini keşfet.','image'=>'https://cdn.akamai.steamstatic.com/steam/apps/1551360/library_hero.jpg','link'=>'product/xbox-game-pass-1','button'=>'ŞİMDİ SATIN AL','sort_order'=>2,'position_x'=>50,'position_y'=>50,'effect'=>'fade','active'=>1],
- ['id'=>'demo-elden-ring','title'=>'YENİ BİR EFSANEYE BAŞLA','description'=>'PlayStation bakiyeni hazırla, favori oyunlarını ve üyeliklerini tek noktadan keşfet.','image'=>'https://cdn.akamai.steamstatic.com/steam/apps/1245620/library_hero.jpg','link'=>'product/ps-store-500','button'=>'ŞİMDİ SATIN AL','sort_order'=>3,'position_x'=>50,'position_y'=>50,'effect'=>'slide','active'=>1],
- ['id'=>'demo-pubg','title'=>'TAKIMINI TOPLA, ARENAYA GİR','description'=>'Popüler oyunlar için dijital ürünleri incele. Sana uygun paketi seç ve alışverişe başla.','image'=>'https://cdn.akamai.steamstatic.com/steam/apps/578080/library_hero.jpg','link'=>'product/pubg-mobile-660','button'=>'ŞİMDİ SATIN AL','sort_order'=>4,'position_x'=>50,'position_y'=>50,'effect'=>'zoom','active'=>1]
-];
 $meta=[
 'categories'=>['title'=>'Oyun kategorileri','table'=>'categories','fields'=>['name'=>'Kategori adı','slug'=>'URL kısa adı','description'=>'Açıklama','sort_order'=>'Sıralama','status'=>'Durum']],
 'products'=>['title'=>'Ürünler','table'=>'products','fields'=>['name'=>'Ürün adı','slug'=>'URL kısa adı','category_id'=>'Kategori','short_description'=>'Kısa açıklama','description'=>'Ürün açıklaması','price'=>'Fiyat (TL)','paykwik_eur_amount'=>'Paykwik Euro tutarı (boşsa normal ürün)','paykwik_margin_percent'=>'Paykwik kâr oranı (%)','image'=>'Görsel URL','delivery_type'=>'Teslimat türü','status'=>'Durum','sort_order'=>'Sıralama']],
@@ -19,7 +13,7 @@ $meta=[
 'backup'=>['title'=>'Veritabanı yedeği','table'=>'','fields'=>[]]
 ];
 if(config('business_mode')!=='multi_vendor'&&$resource==='sellers')$resource='overview';
-if(!isset($meta[$resource])&&!in_array($resource,['overview','reports','settings','slider','inventory','payments','orders','refunds','tickets','sellers','seller_payments','demo','backup','paykwik'],true))$resource='overview';
+if(!isset($meta[$resource])&&!in_array($resource,['overview','reports','settings','slider','inventory','payments','orders','refunds','tickets','sellers','seller_payments' ,'backup','paykwik'],true))$resource='overview';
 if($_SERVER['REQUEST_METHOD']==='POST'){csrf_check();$action=(string)($_POST['action']??'');try{
  if($resource==='paykwik'&&$action==='refresh_rate'){$rate=paykwik_fetch_tcmb_rate();paykwik_store_rate(db(),$rate);$updated=paykwik_refresh_product_prices(db(),$rate);flash('success','TCMB Euro satış kuru güncellendi: '.number_format((float)$rate['rate'],4,',','.').' TL. '.$updated.' ürün fiyatı yenilendi.');}
  elseif($resource==='paykwik'&&$action==='save_margin'){$productId=(int)($_POST['product_id']??0);$margin=filter_var($_POST['margin_percent']??null,FILTER_VALIDATE_FLOAT);if($productId<1||$margin===false||$margin<0||$margin>500)throw new RuntimeException('Ürün ve yüzde 0–500 aralığında geçerli kâr oranı girin.');$q=db()->prepare('SELECT paykwik_eur_amount FROM products WHERE id=? AND paykwik_enabled=1');$q->execute([$productId]);$eur=$q->fetchColumn();if($eur===false)throw new RuntimeException('Paykwik ürünü bulunamadı.');$rate=paykwik_latest_rate(db());if(!$rate)throw new RuntimeException('TCMB Euro kuru bulunamadı.');$price=paykwik_calculate_price((float)$eur,(float)$rate['rate'],(float)$margin);db()->prepare('UPDATE products SET paykwik_margin_percent=?,price=? WHERE id=?')->execute([number_format((float)$margin,3,'.',''),number_format($price,2,'.',''),$productId]);flash('success','Ürün kâr oranı ve satış fiyatı güncellendi.');}
