@@ -55,7 +55,7 @@ jobs:
           EPIN_TEST_DB_USER: root
           EPIN_TEST_DB_PASS: root
         run: php tests/backup-restore-integration.php
-      - name: Light theme contract tests
+      - name: Light theme and premium mobile navigation contract tests
         run: php tests/light-theme-contract.php
       - name: Customer password recovery contract tests
         run: php tests/password-recovery-contract.php

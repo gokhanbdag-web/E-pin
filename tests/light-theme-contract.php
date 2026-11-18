@@ -12,4 +12,9 @@ foreach([['storefront',$store],['admin',$admin],['installer',$install]] as [$nam
  if(!str_contains($layout,'light-theme.css'))throw new RuntimeException('Light theme is not loaded by '.$name.' layout.');
 }
 if(preg_match('/color-scheme:dark|--bg:#0b1020|--panel:#141c31/',$theme))throw new RuntimeException('Dark theme base tokens remain in the light theme.');
-echo "Light theme contract checks passed.\n";
+
+foreach(['Premium mobile navigation','rgba(255,255,255,.98)','storefront-menu-toggle[aria-expanded=true]','storefront-body.storefront-menu-open::before','prefers-reduced-motion:reduce'] as $needle){
+ if(!str_contains($theme,$needle))throw new RuntimeException('Premium mobile navigation contract missing: '.$needle);
+}
+if(!str_contains($store,'storefront-menu-toggle')||!str_contains($store,'storefront-navigation'))throw new RuntimeException('Storefront mobile navigation hooks are missing.');
+echo "Light theme and premium mobile navigation contract checks passed.\n";
