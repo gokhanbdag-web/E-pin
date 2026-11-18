@@ -17,7 +17,8 @@ SELECT 'Paykwik Kodları','paykwik-kodlari','Euro tutarına göre Paykwik dijita
 WHERE NOT EXISTS (SELECT 1 FROM categories WHERE slug='paykwik-kodlari');
 INSERT INTO products(category_id,name,slug,short_description,description,price,image,delivery_type,status,sort_order,paykwik_eur_amount,paykwik_margin_percent,paykwik_enabled)
 SELECT c.id,CONCAT('Paykwik ',CAST(d.amount AS UNSIGNED),' Euro'),CONCAT('paykwik-',CAST(d.amount AS UNSIGNED)),
- CONCAT('Paykwik ',d.amount,' Euro dijital kod talebi. Sipariş ve teslimat detayları için müşteri temsilcimiz sizinle iletişime geçer.'),
+ CONCAT('Paykwik ',CAST(d.amount AS UNSIGNED),' Euro dijital kod talebi.'),
+ 'Sipariş ve teslimat detayları için müşteri temsilcimiz sizinle iletişime geçer.',
  ROUND(d.amount*55.3446*1.20,2),NULL,'manual','active',d.sort_order,d.amount,20.000,1
 FROM categories c
 JOIN (
@@ -29,3 +30,13 @@ AND NOT EXISTS (SELECT 1 FROM products p WHERE p.slug=CONCAT('paykwik-',CAST(d.a
 INSERT INTO paykwik_exchange_rates(currency,rate,rate_type,rate_date,fetched_at,source_url)
 VALUES('EUR',55.344600,'ForexSelling','2026-11-18',NOW(),'https://www.tcmb.gov.tr/kurlar/today.xml')
 ON DUPLICATE KEY UPDATE rate=VALUES(rate),rate_type=VALUES(rate_type),fetched_at=VALUES(fetched_at),source_url=VALUES(source_url);
+
+-- Remove demo wording from previously seeded customer-facing content without deleting store data.
+UPDATE products SET
+ short_description=REPLACE(REPLACE(REPLACE(REPLACE(short_description,'demo',''), 'Demo',''), 'DEMO',''), 'örnek ürün sayfası','ürün sayfası'),
+ description=REPLACE(REPLACE(REPLACE(REPLACE(description,'demo',''), 'Demo',''), 'DEMO',''), 'örnek','');
+UPDATE pages SET content=REPLACE(REPLACE(REPLACE(REPLACE(content,'demo',''), 'Demo',''), 'DEMO',''), 'örnek','');
+UPDATE settings SET setting_value=REPLACE(REPLACE(REPLACE(setting_value,'demo',''), 'Demo',''), 'DEMO','')
+WHERE setting_key IN ('home_description','footer_text','slider_slides_json');
+UPDATE product_variants SET sku=REPLACE(sku,'DEMO-','EPIN-') WHERE sku LIKE 'DEMO-%';
+DELETE FROM settings WHERE setting_key='demo_content_seeded';
