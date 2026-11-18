@@ -5,7 +5,7 @@ $source = file_get_contents($root . '/app/backup.php');
 $admin = file_get_contents($root . '/app/admin.php');
 $view = file_get_contents($root . '/app/views/admin/manage.php');
 $layout = file_get_contents($root . '/app/views/layout-admin.php');
-foreach (['database_backup_chunks','SHOW FULL TABLES','SHOW CREATE TABLE','PDO::MYSQL_ATTR_USE_BUFFERED_QUERY','Cache-Control','Content-Disposition','0x'] as $needle) {
+foreach (['database_backup_chunks','SHOW TABLE STATUS','START TRANSACTION WITH CONSISTENT SNAPSHOT','REPEATABLE READ','SHOW CREATE TABLE','PDO::MYSQL_ATTR_USE_BUFFERED_QUERY','Cache-Control','Content-Disposition','0x'] as $needle) {
     if (!str_contains($source, $needle)) throw new RuntimeException('Database backup is missing: ' . $needle);
 }
 if (str_contains($source, 'file_put_contents') || str_contains($source, 'fopen(')) throw new RuntimeException('Database backup must not persist dump files on the web server.');
