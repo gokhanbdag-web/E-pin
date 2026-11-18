@@ -32,6 +32,8 @@ $iyzico = [
     'fraudStatus' => 1,
     'currency' => 'TRY',
     'conversationId' => 'EP261112A1B2C3D4',
+    'basketId' => 'EP261112A1B2C3D4',
+    'price' => '1299.00',
     'paidPrice' => '1299.00',
 ];
 payment_assert(iyzico_checkout_result_valid($iyzico, 'EP261112A1B2C3D4', '1299.00'), 'A fully verified iyzico payment must be accepted.');
@@ -41,6 +43,8 @@ foreach ([
     'fraudStatus' => 0,
     'currency' => 'USD',
     'conversationId' => 'ANOTHER-ORDER',
+    'basketId' => 'ANOTHER-BASKET',
+    'price' => '1298.99',
     'paidPrice' => '1298.99',
 ] as $field => $value) {
     $invalid = $iyzico;
