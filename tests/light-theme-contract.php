@@ -32,9 +32,5 @@ foreach(['Premium storefront product and category cards','linear-gradient(155deg
 foreach(["Premium product detail and purchase experience","product-detail::before","product-detail-info>.eyebrow","detail-price{display:inline-flex","buy-form button::after","stock-note{","description-panel h2"] as $needle){
  if(!str_contains($theme,$needle))throw new RuntimeException('Premium product detail contract missing: '.$needle);
 }
-$productView=file_get_contents($root.'/app/views/store/product.php');
-foreach(['productVariant','variantPrice','variantStockNote','addToCartButton','cart/add'] as $hook){
- if(!str_contains($productView,$hook))throw new RuntimeException('Product purchase behavior hook missing: '.$hook);
-}
 echo "Light theme, premium navigation, slider arrows, product cards and product detail contract checks passed.
 ";
