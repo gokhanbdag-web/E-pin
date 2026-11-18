@@ -148,6 +148,14 @@ function paytr_signature_matches(array $post,string $key,string $salt):bool {
 function paytr_callback_valid(array $post):bool {
     return paytr_signature_matches($post,payment_secret('paytr_merchant_key'),payment_secret('paytr_merchant_salt'));
 }
+function paytr_callback_details_valid(array $post,mixed $orderTotal):bool {
+    $status=(string)($post['status']??'');
+    $amount=$post['total_amount']??null;
+    return in_array($status,['success','failed'],true)
+        && is_scalar($amount)
+        && ctype_digit((string)$amount)
+        && (int)$amount===(int)round((float)$orderTotal*100);
+}
 function iyzico_checkout_result_valid(array $result,string $orderNo,mixed $total):bool {
     return ($result['status']??'')==='success'
         && ($result['paymentStatus']??'')==='SUCCESS'
