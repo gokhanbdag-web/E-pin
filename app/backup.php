@@ -9,13 +9,18 @@ function database_backup_chunks(PDO $pdo): Generator
     };
     if ($pdo->inTransaction()) throw new RuntimeException('Tutarlı yedekleme için veritabanı bağlantısında açık işlem bulunmamalı.');
     // A consistent snapshot is only guaranteed for transactional tables.
-    $engines = $pdo->query("SHOW TABLE STATUS")->fetchAll(PDO::FETCH_ASSOC);
+    $baseTables = $pdo->query("SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'")->fetchAll(PDO::FETCH_NUM);
+    $engineRows = $pdo->query("SHOW TABLE STATUS")->fetchAll(PDO::FETCH_ASSOC);
+    $engines = [];
+    foreach ($engineRows as $row) $engines[(string)$row['Name']] = $row['Engine'] ?? null;
     $tables = [];
-    foreach ($engines as $tableInfo) {
-        if (($tableInfo['Engine'] ?? null) !== null && strcasecmp((string)$tableInfo['Engine'], 'InnoDB') !== 0) {
-            throw new RuntimeException('Tutarlı yedekleme için tüm tablolar InnoDB olmalı. Uyumsuz tablo: ' . (string)$tableInfo['Name']);
+    foreach ($baseTables as $tableRow) {
+        $tableName = (string)$tableRow[0];
+        $engine = $engines[$tableName] ?? null;
+        if ($engine === null || strcasecmp((string)$engine, 'InnoDB') !== 0) {
+            throw new RuntimeException('Tutarlı yedekleme için tüm tablolar InnoDB olmalı. Uyumsuz tablo: ' . $tableName);
         }
-        $tables[] = [(string)$tableInfo['Name']];
+        $tables[] = [$tableName];
     }
     if (!$tables) throw new RuntimeException('Yedeklenecek veritabanı tablosu bulunamadı.');
     $pdo->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
