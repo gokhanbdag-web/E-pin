@@ -82,6 +82,8 @@ jobs:
         run: php tests/payment-lifecycle-integration.php
       - name: Paykwik TCMB pricing contract tests
         run: php tests/paykwik-pricing-contract.php
+      - name: Paykwik card artwork contract tests
+        run: php tests/paykwik-card-art-contract.php
       - name: MySQL migration integration tests
         env:
           EPIN_TEST_DB_HOST: 127.0.0.1
