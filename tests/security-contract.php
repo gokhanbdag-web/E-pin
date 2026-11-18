@@ -153,6 +153,13 @@ foreach ([
     "WHERE seller_id=? AND id=?",
     "SELECT id FROM products WHERE id=? AND seller_id=?",
     "UPDATE products SET delivery_type='automatic' WHERE id=? AND seller_id=?",
+    "if(\$action==='save_variant')",
+    "SELECT id FROM products WHERE id=? AND seller_id=?",
+    "INSERT INTO product_variants(product_id,name,sku,price,status,sort_order)",
+    "SELECT id FROM product_variants WHERE id=? AND product_id=? AND status='active'",
+    "INSERT IGNORE INTO inventory_codes(product_id,variant_id,code_ciphertext,code_nonce,code_tag,code_hash,status)",
+    "AND ((c.variant_id IS NULL AND oi.variant_id IS NULL) OR c.variant_id=oi.variant_id)",
+
     "SELECT * FROM seller_profiles WHERE user_id=? LIMIT 1",
     "UPDATE seller_profiles SET shop_name=?,shop_slug=?,status='pending' WHERE user_id=?",
     "SELECT id,order_no,total,status,payment_status,created_at FROM orders WHERE user_id=?",
