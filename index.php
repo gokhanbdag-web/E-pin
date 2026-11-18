@@ -11,9 +11,13 @@ if(isset($_GET['brand_logo'])){
  header('Content-Type: '.$mime);header('Content-Length: '.(string)filesize($logoPath));header('X-Content-Type-Options: nosniff');header('Cache-Control: public, max-age=86400');readfile($logoPath);exit;
 }
 require_once APP_ROOT.'/app/payments.php';
+require_once APP_ROOT.'/app/paykwik.php';
 if(!is_file(APP_ROOT.'/config.php')){require APP_ROOT.'/install/index.php';exit;}
 $path=app_route_path_from_uri((string)($_SERVER['REQUEST_URI']??'/'),app_base_path());
 $path=$path?:'home';
+if($path==='home'||str_starts_with($path,'product/')||category_route_slug_from_path($path)!==null){
+ try{$paykwikRate=paykwik_latest_rate(db());if($paykwikRate)paykwik_refresh_product_prices(db(),$paykwikRate);}catch(Throwable $e){error_log('Paykwik TCMB price refresh failed: '.$e->getMessage());}
+}
 
 if(str_starts_with($path,'payment/start/') && $_SERVER['REQUEST_METHOD']==='POST'){
     csrf_check(); require_login();

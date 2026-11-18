@@ -80,6 +80,8 @@ jobs:
           EPIN_TEST_DB_USER: root
           EPIN_TEST_DB_PASS: root
         run: php tests/payment-lifecycle-integration.php
+      - name: Paykwik TCMB pricing contract tests
+        run: php tests/paykwik-pricing-contract.php
       - name: MySQL migration integration tests
         env:
           EPIN_TEST_DB_HOST: 127.0.0.1
