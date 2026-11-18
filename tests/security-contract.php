@@ -27,6 +27,16 @@ if (!str_contains($index, 'SELECT id FROM inventory_codes WHERE product_id=?') |
 if (!str_contains($index, "status='reserved',reserved_order_id=?,reserved_until=DATE_ADD(NOW(),INTERVAL 30 MINUTE)")) throw new RuntimeException('Checkout must reserve digital codes before payment.');
 if (!str_contains($boot, "i.status='reserved' AND o.status='expired'")) throw new RuntimeException('Expired unpaid orders must release reserved digital codes.');
 if (!str_contains($index, 'coupon_quote($pdo,(string)$_SESSION[\'coupon_code\'],$subtotal,true)')) throw new RuntimeException('Checkout must revalidate and lock the coupon before calculating the final order total.');
+$refundAdmin = file_get_contents($root . '/app/admin.php');
+$refundView = file_get_contents($root . '/app/views/admin/manage.php');
+if (!str_contains($refundAdmin, 'FROM refund_request_events e LEFT JOIN users u ON u.id=e.admin_user_id') ||
+    !str_contains($refundAdmin, '$refundEvents[(int)$eventRow[\'refund_id\']][]=$eventRow')) {
+    throw new RuntimeException('Admin refund list must load batched administrator audit history.');
+}
+if (!str_contains($refundView, 'İşlem geçmişi') || !str_contains($refundView, 'from_status') ||
+    !str_contains($refundView, 'to_status') || !str_contains($refundView, 'created_at')) {
+    throw new RuntimeException('Admin refund cards must display the auditable decision timeline.');
+}
 echo "Security contract checks passed.\n";
 
 $recovery = file_get_contents($root . '/recover-admin.php');
