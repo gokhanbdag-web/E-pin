@@ -16,7 +16,7 @@ INSERT INTO categories(name,slug,description,sort_order,status)
 SELECT 'Paykwik Kodları','paykwik-kodlari','Euro tutarına göre Paykwik dijital kod seçenekleri.',90,'active'
 WHERE NOT EXISTS (SELECT 1 FROM categories WHERE slug='paykwik-kodlari');
 INSERT INTO products(category_id,name,slug,short_description,description,price,image,delivery_type,status,sort_order,paykwik_eur_amount,paykwik_margin_percent,paykwik_enabled)
-SELECT c.id,CONCAT('Paykwik ',d.amount,' Euro'),'paykwik-',REPLACE(CAST(d.amount AS CHAR),'.','-'),
+SELECT c.id,CONCAT('Paykwik ',CAST(d.amount AS UNSIGNED),' Euro'),CONCAT('paykwik-',CAST(d.amount AS UNSIGNED)),
  CONCAT('Paykwik ',d.amount,' Euro dijital kod talebi. Sipariş ve teslimat detayları için müşteri temsilcimiz sizinle iletişime geçer.'),
  ROUND(d.amount*55.3446*1.20,2),NULL,'manual','active',d.sort_order,d.amount,20.000,1
 FROM categories c
@@ -25,7 +25,7 @@ JOIN (
  SELECT 100.00,4 UNION ALL SELECT 250.00,5 UNION ALL SELECT 500.00,6 UNION ALL SELECT 1000.00,7
 ) d
 WHERE c.slug='paykwik-kodlari'
-AND NOT EXISTS (SELECT 1 FROM products p WHERE p.slug=CONCAT('paykwik-',REPLACE(CAST(d.amount AS CHAR),'.','-')));
+AND NOT EXISTS (SELECT 1 FROM products p WHERE p.slug=CONCAT('paykwik-',CAST(d.amount AS UNSIGNED)));
 INSERT INTO paykwik_exchange_rates(currency,rate,rate_type,rate_date,fetched_at,source_url)
 VALUES('EUR',55.344600,'ForexSelling','2026-11-18',NOW(),'https://www.tcmb.gov.tr/kurlar/today.xml')
 ON DUPLICATE KEY UPDATE rate=VALUES(rate),rate_type=VALUES(rate_type),fetched_at=VALUES(fetched_at),source_url=VALUES(source_url);
