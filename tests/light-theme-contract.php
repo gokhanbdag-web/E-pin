@@ -17,4 +17,4 @@ foreach(['Premium mobile navigation','rgba(255,255,255,.98)','storefront-menu-to
  if(!str_contains($theme,$needle))throw new RuntimeException('Premium mobile navigation contract missing: '.$needle);
 }
 if(!str_contains($store,'storefront-menu-toggle')||!str_contains($store,'storefront-navigation'))throw new RuntimeException('Storefront mobile navigation hooks are missing.');
-echo "Light theme and premium mobile navigation contract checks passed.\\n";
+echo "Light theme and premium mobile navigation contract checks passed.\n";
