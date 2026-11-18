@@ -345,6 +345,19 @@ $lateAfterFailureState=$partial->prepare('SELECT status,payment_status FROM orde
 assert_true($lateAfterFailureRow['status']==='manual_review'&&$lateAfterFailureRow['payment_status']==='paid','A verified payment received after a failure callback must be held for manual review rather than automatically fulfilled.');
 $lateAfterFailureLedger=$partial->prepare("SELECT COUNT(*) FROM seller_ledger WHERE order_id=? AND entry_type IN ('sale_credit','platform_commission')");$lateAfterFailureLedger->execute([$lateFailureOrder]);
 assert_true((int)$lateAfterFailureLedger->fetchColumn()===0,'A late payment held for manual review must not create seller earnings before fulfilment is reconciled.');
+// A late failure notification must never downgrade an order whose payment was already verified.
+$partial->prepare("INSERT INTO orders(user_id,order_no,total,status,payment_status) VALUES(?,?,?,'pending','unpaid')")->execute([$userId,'TEST-LATE-FAILURE-AFTER-PAID',15]);
+$lateFailureAfterPaidOrder=(int)$partial->lastInsertId();
+payment_attempt_reserve($lateFailureAfterPaidOrder,'paytr',15,'TEST-LATE-FAILURE-AFTER-PAID-PAY');
+payment_mark_paid($lateFailureAfterPaidOrder,'paytr','TEST-LATE-FAILURE-AFTER-PAID-PAY');
+payment_attempt_fail($lateFailureAfterPaidOrder,'paytr','TEST-LATE-FAILURE-AFTER-PAID-PAY');
+$lateFailureAfterPaidState=$partial->prepare('SELECT status,payment_status FROM orders WHERE id=?');$lateFailureAfterPaidState->execute([$lateFailureAfterPaidOrder]);$lateFailureAfterPaidRow=$lateFailureAfterPaidState->fetch(PDO::FETCH_ASSOC);
+assert_true($lateFailureAfterPaidRow['payment_status']==='paid'&&$lateFailureAfterPaidRow['status']==='processing','A late failure callback must not downgrade a successfully paid order.');
+$lateFailureAttempt=$partial->prepare("SELECT status FROM payment_transactions WHERE provider_reference='TEST-LATE-FAILURE-AFTER-PAID-PAY'");$lateFailureAttempt->execute();
+assert_true($lateFailureAttempt->fetchColumn()==='success','A failure callback received after success must preserve the successful provider-attempt state.');
+payment_attempt_fail($lateFailureAfterPaidOrder,'paytr','TEST-LATE-FAILURE-AFTER-PAID-PAY');
+$lateFailureAfterPaidState->execute([$lateFailureAfterPaidOrder]);$lateFailureAfterPaidRow=$lateFailureAfterPaidState->fetch(PDO::FETCH_ASSOC);
+assert_true($lateFailureAfterPaidRow['payment_status']==='paid'&&$lateFailureAfterPaidRow['status']==='processing','Repeated late failure callbacks must remain harmless and idempotent.');
 // Refund ledger reversals: pending seller credit is cancelled; available credit is debited.
 $partial->prepare("INSERT INTO orders(user_id,order_no,total,status,payment_status) VALUES(?,?,?,?,?)")->execute([$userId,'TEST-REFUND-PENDING',10,'processing','paid']);
 $refundPendingOrder=(int)$partial->lastInsertId();
