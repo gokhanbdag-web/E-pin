@@ -47,7 +47,14 @@ function paykwik_store_rate(PDO $pdo, array $rate): void {
 function paykwik_latest_rate(PDO $pdo, bool $refreshIfNewDay = true): ?array {
     $q = $pdo->query("SELECT currency,rate,rate_type,rate_date,fetched_at,source_url FROM paykwik_exchange_rates WHERE currency='EUR' ORDER BY rate_date DESC LIMIT 1");
     $cached = $q->fetch() ?: null;
-    if ($refreshIfNewDay && (!$cached || $cached['rate_date'] !== date('Y-m-d'))) {
+    $now = new DateTimeImmutable('now', new DateTimeZone('Europe/Istanbul'));
+    $today = $now->format('Y-m-d');
+    $attempt = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_key='paykwik_rate_last_attempt' LIMIT 1");
+    $attempt->execute();
+    $lastAttempt = (string) ($attempt->fetchColumn() ?: '');
+    $shouldRefresh = $refreshIfNewDay && (!$cached || ($cached['rate_date'] < $today && $now->format('H:i') >= '15:35' && $lastAttempt !== $today));
+    if ($shouldRefresh) {
+        $pdo->prepare("INSERT INTO settings(setting_key,setting_value) VALUES('paykwik_rate_last_attempt',?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)")->execute([$now->format('Y-m-d H:i:s')]);
         try {
             $fresh = paykwik_fetch_tcmb_rate();
             paykwik_store_rate($pdo, $fresh);
