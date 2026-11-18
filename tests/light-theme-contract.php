@@ -43,6 +43,13 @@ foreach(['name="q"','name="sort"','name="min_price"','name="max_price"','name="s
 echo "Light theme, premium navigation, slider arrows, product/category cards and premium search/filter contract checks passed.
 ";
 
+// Admin regressions: an open drawer must stay above its backdrop.
+foreach(['.admin-side:not(.is-open){position:static!important}','.admin-side.is-open{','position:fixed!important','z-index:120!important','pointer-events:auto!important','.admin-nav-backdrop.is-visible{','z-index:110!important'] as $needle){
+ if(!str_contains($theme,$needle))throw new RuntimeException('Admin drawer stacking contract missing: '.$needle);
+}
+foreach(['.admin-content .admin-panel p,','.admin-content .admin-form label,','.admin-content .admin-form input,','.admin-content .slider-manager-card{','.admin-content .slider-manager-grid label{','color:#172033!important','background:#fff!important'] as $needle){
+ if(!str_contains($theme,$needle))throw new RuntimeException('Admin light-theme contrast contract missing: '.$needle);
+}
 $cart=file_get_contents($root.'/app/views/store/cart.php');
 $checkout=file_get_contents($root.'/app/views/store/checkout.php');
 $order=file_get_contents($root.'/app/views/store/order.php');
