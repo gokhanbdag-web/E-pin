@@ -24,4 +24,8 @@ foreach(['Luxury slider navigation','top:50%','left:50%','translate(-50%,-50%)',
 foreach(['data-slider-prev','data-slider-next','data-product-prev','data-product-next'] as $hook){
  if(!str_contains($home,$hook))throw new RuntimeException('Slider navigation hook missing: '.$hook);
 }
-echo "Light theme, premium mobile navigation and slider arrow contract checks passed.\n";
+
+foreach(['Premium storefront product and category cards','linear-gradient(155deg,#fff 0%,#fbfcff 100%)','product-link h3{','product-buy-link:hover','home-categories .chip:hover'] as $needle){
+ if(!str_contains($theme,$needle))throw new RuntimeException('Premium product/category card contract missing: '.$needle);
+}
+echo "Light theme, premium navigation, slider arrows and product/category card contract checks passed.\n";

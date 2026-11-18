@@ -159,3 +159,32 @@ hr{border:0;border-top:1px solid var(--line)}
 @media(prefers-reduced-motion:reduce){
  .game-slider-arrows button,.product-slider-controls button,.game-slider-arrows button::before,.product-slider-controls button::before{transition:none!important}
 }
+
+
+/* Premium storefront product and category cards. */
+.products{align-items:stretch;gap:20px}
+.products>.product{position:relative;display:flex;min-width:0;flex-direction:column;overflow:hidden;padding:14px!important;border:1px solid #e5eaf2!important;border-radius:18px!important;background:linear-gradient(155deg,#fff 0%,#fbfcff 100%)!important;box-shadow:0 7px 22px rgba(25,42,70,.055),inset 0 1px 0 rgba(255,255,255,.9)!important;transition:transform .24s cubic-bezier(.2,.8,.2,1),border-color .24s,box-shadow .24s}
+.products>.product:hover{transform:translateY(-5px);border-color:#bfd3f7!important;box-shadow:0 18px 38px rgba(30,64,120,.12),0 4px 10px rgba(30,64,120,.05)!important}
+.product-link{display:flex;flex:1;min-width:0;flex-direction:column;color:inherit!important;text-decoration:none}
+.product-link h3{margin:14px 2px 5px;color:#172033!important;font-size:1.02rem;font-weight:800;line-height:1.35;letter-spacing:-.018em}
+.product-link:hover h3{color:#1d4ed8!important}
+.product-link p{display:-webkit-box;min-height:2.8em;margin:3px 2px 13px;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;color:#718096!important;font-size:.86rem;line-height:1.45}
+.product-link>strong{margin:auto 2px 2px;padding-top:8px;color:#087f73!important;font-size:1.12rem;font-weight:900;letter-spacing:-.025em}
+.product-image{position:relative;display:grid;place-items:center;flex:none;min-width:0;overflow:hidden;height:auto;min-height:150px;aspect-ratio:16/10;border:1px solid #edf1f7;border-radius:13px!important;background:linear-gradient(135deg,#edf4ff 0%,#e8f8f5 100%)!important;color:#42617f}
+.product-image img{width:100%;height:100%;object-fit:cover;transition:transform .5s cubic-bezier(.2,.75,.25,1)}
+.product:hover .product-image img{transform:scale(1.055)}
+.product-image-label{left:10px;bottom:10px;padding:6px 9px;border:1px solid rgba(255,255,255,.72);border-radius:7px;background:rgba(15,29,49,.78);color:#fff;font-size:.61rem;font-weight:850;letter-spacing:.09em;box-shadow:0 3px 10px rgba(10,20,35,.12);backdrop-filter:blur(8px)}
+.product-buy-link{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;margin-top:14px;padding:0 14px;border:1px solid #c8f0e8;border-radius:10px;background:linear-gradient(105deg,#e9fbf6,#eaf3ff);color:#087f73!important;text-decoration:none;font-size:.72rem;font-weight:900;letter-spacing:.045em;transition:background .2s,border-color .2s,transform .2s,box-shadow .2s}
+.product-buy-link span{font-size:1rem;transition:transform .2s}
+.product-buy-link:hover{transform:translateY(-1px);border-color:#8ddccc;background:linear-gradient(105deg,#d8f8ef,#e1edff);box-shadow:0 6px 15px rgba(15,118,110,.1)}
+.product-buy-link:hover span{transform:translate(2px,-2px)}
+.home-featured .product,.product-slide{border-color:#e5eaf2!important;background:linear-gradient(155deg,#fff 0%,#fbfcff 100%)!important}
+.home-featured .product:hover,.product-slide:hover{border-color:#bfd3f7!important;box-shadow:0 18px 38px rgba(30,64,120,.12)!important}
+.home-featured .product h3,.product-slide h3{color:#172033!important}
+.home-featured .product p,.product-slide p{color:#718096!important}
+.home-featured .product strong,.product-slide .product-link>strong{color:#087f73!important}
+.home-categories .chip{display:inline-flex;align-items:center;gap:13px;min-height:44px;padding:10px 16px;border:1px solid #e2eaf5!important;border-radius:12px!important;background:linear-gradient(145deg,#fff,#f7faff)!important;color:#34445d!important;box-shadow:0 3px 10px rgba(25,42,70,.035);font-size:.88rem;font-weight:750;transition:transform .2s,border-color .2s,background .2s,box-shadow .2s}
+.home-categories .chip:hover{transform:translateY(-2px);border-color:#b8d0f8!important;background:#f1f6ff!important;color:#1d4ed8!important;box-shadow:0 8px 18px rgba(37,99,235,.09)}
+.home-categories .chip span{color:#0f9b8e!important;font-size:1rem}
+@media(max-width:760px){.products{gap:13px}.products>.product{padding:12px!important;border-radius:15px!important}.product-image{min-height:120px}.product-link h3{font-size:.96rem}.product-buy-link{min-height:42px;margin-top:11px}}
+@media(prefers-reduced-motion:reduce){.products>.product,.product-image img,.product-buy-link,.product-buy-link span,.home-categories .chip{transition:none!important}}
