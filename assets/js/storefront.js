@@ -43,3 +43,29 @@ function step(){var card=viewport.querySelector('.product-slide');return card?ca
 if(previous)previous.addEventListener('click',function(){viewport.scrollBy({left:-step(),behavior:'smooth'});});
 if(next)next.addEventListener('click',function(){viewport.scrollBy({left:step(),behavior:'smooth'});});
 })();
+
+// Keep the open mobile menu inside the actually visible viewport (including mobile browser chrome).
+(function(){
+ 'use strict';
+ var button=document.querySelector('.storefront-menu-toggle');
+ var menu=document.getElementById('storefront-navigation');
+ var header=document.querySelector('.storefront-header');
+ if(!button||!menu||!header)return;
+ function syncMenuViewport(){
+  if(button.getAttribute('aria-expanded')!=='true')return;
+  var headerBottom=header.getBoundingClientRect().bottom;
+  var viewportHeight=(window.visualViewport&&window.visualViewport.height)||window.innerHeight;
+  var top=Math.max(0,Math.round(headerBottom));
+  var available=Math.max(160,Math.floor(viewportHeight-top-8));
+  menu.style.setProperty('--storefront-menu-top',top+'px');
+  menu.style.setProperty('--storefront-menu-max-height',available+'px');
+ }
+ var originalToggle=button.getAttribute('aria-expanded');
+ button.addEventListener('click',function(){
+  window.requestAnimationFrame(syncMenuViewport);
+ });
+ window.addEventListener('resize',syncMenuViewport,{passive:true});
+ window.addEventListener('orientationchange',function(){window.setTimeout(syncMenuViewport,80);},{passive:true});
+ if(window.visualViewport)window.visualViewport.addEventListener('resize',syncMenuViewport,{passive:true});
+ menu.addEventListener('scroll',function(){}, {passive:true});
+})();
