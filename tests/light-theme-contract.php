@@ -18,7 +18,7 @@ foreach(['Premium mobile navigation','rgba(255,255,255,.98)','storefront-menu-to
 }
 if(!str_contains($store,'storefront-menu-toggle')||!str_contains($store,'storefront-navigation'))throw new RuntimeException('Storefront mobile navigation hooks are missing.');
 $home=file_get_contents($root.'/app/views/store/home.php');
-foreach(['Premium slider navigation','game-slider-arrows button::before','product-slider-controls button::before',':focus-visible','prefers-reduced-motion:reduce'] as $needle){
+foreach(['Luxury slider navigation','top:50%','left:50%','translate(-50%,-50%)','inset:4px','linear-gradient(145deg,#344660','game-slider-arrows button::before','product-slider-controls button::before',':focus-visible','prefers-reduced-motion:reduce'] as $needle){
  if(!str_contains($theme,$needle))throw new RuntimeException('Premium slider arrow contract missing: '.$needle);
 }
 foreach(['data-slider-prev','data-slider-next','data-product-prev','data-product-next'] as $hook){
