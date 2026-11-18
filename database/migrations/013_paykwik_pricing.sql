@@ -39,4 +39,4 @@ UPDATE pages SET content=REPLACE(REPLACE(REPLACE(REPLACE(content,'demo',''), 'De
 UPDATE settings SET setting_value=REPLACE(REPLACE(REPLACE(setting_value,'demo',''), 'Demo',''), 'DEMO','')
 WHERE setting_key IN ('home_description','footer_text','slider_slides_json');
 UPDATE product_variants SET sku=REPLACE(sku,'DEMO-','EPIN-') WHERE sku LIKE 'DEMO-%';
-DELETE FROM settings WHERE setting_key='demo_content_seeded';
+UPDATE settings SET setting_key='store_content_seeded' WHERE setting_key='demo_content_seeded';
