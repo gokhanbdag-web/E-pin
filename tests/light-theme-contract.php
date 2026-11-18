@@ -49,7 +49,7 @@ foreach(['.admin-side:not(.is-open){display:none!important;position:fixed!import
 }
 if(str_contains($theme,'.admin-side:not(.is-open){position:static!important}'))throw new RuntimeException('Closed admin drawer must not use static positioning.');
 // Admin regressions: an open drawer must stay above its backdrop.
-foreach(['.admin-side:not(.is-open){position:static!important}','.admin-side.is-open{','position:fixed!important','z-index:120!important','pointer-events:auto!important','.admin-nav-backdrop.is-visible{','z-index:110!important'] as $needle){
+foreach(['.admin-side:not(.is-open){display:none!important;position:fixed!important;}','.admin-side.is-open{','position:fixed!important','z-index:120!important','pointer-events:auto!important','.admin-nav-backdrop.is-visible{','z-index:110!important'] as $needle){
  if(!str_contains($theme,$needle))throw new RuntimeException('Admin drawer stacking contract missing: '.$needle);
 }
 foreach(['.admin-content .admin-panel p,','.admin-content .admin-form label,','.admin-content .admin-form input,','.admin-content .slider-manager-card{','.admin-content .slider-manager-grid label{','color:#172033!important','background:#fff!important'] as $needle){
