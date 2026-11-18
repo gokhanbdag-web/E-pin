@@ -68,6 +68,19 @@ foreach ([
     $invalid[$field] = $value;
     payment_assert(!iyzico_checkout_result_valid($invalid, 'EP261112A1B2C3D4', '1299.00'), 'iyzico callback must reject invalid ' . $field . '.');
 }
+foreach ([
+    'status' => ['success'],
+    'paymentStatus' => ['SUCCESS'],
+    'currency' => ['TRY'],
+    'conversationId' => ['EP261112A1B2C3D4'],
+    'basketId' => ['EP261112A1B2C3D4'],
+    'price' => ['1299.00'],
+    'paidPrice' => ['1299.00'],
+] as $field => $value) {
+    $malformed = $iyzico;
+    $malformed[$field] = $value;
+    payment_assert(!iyzico_checkout_result_valid($malformed, 'EP261112A1B2C3D4', '1299.00'), 'iyzico callback must reject array-shaped ' . $field . '.');
+}
 payment_assert(!iyzico_checkout_result_valid($iyzico, 'EP261112A1B2C3D4', '1299.01'), 'iyzico callback must match the exact order total.');
 
 echo "Payment callback contract checks passed.\n";
