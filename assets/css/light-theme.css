@@ -74,7 +74,6 @@ tbody tr:hover{background:#f8fbff}
 hr{border:0;border-top:1px solid var(--line)}
 @media(max-width:800px){
  .admin-shell{grid-template-columns:minmax(0,1fr)!important}
- .admin-side:not(.is-open){position:static!important}
  .page-head{align-items:flex-start;flex-wrap:wrap}
  .stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
@@ -604,6 +603,8 @@ hr{border:0;border-top:1px solid var(--line)}
 
 /* Admin panel: preserve drawer stacking and readable contrast in the light theme. */
 @media(max-width:760px){
+ /* Closed navigation must not occupy a row in the admin layout. */
+ .admin-side:not(.is-open){display:none!important;position:fixed!important;}
  .admin-side.is-open{
   position:fixed!important;z-index:120!important;top:62px!important;bottom:0!important;left:0!important;
   display:grid!important;width:min(82vw,310px)!important;max-height:none!important;overflow-y:auto!important;
