@@ -16,5 +16,5 @@ foreach ([[0,55,20], [10,0,20], [10,55,-1], [10,55,501], [NAN,55,20]] as $bad) {
  if (!$rejected) throw new RuntimeException('Invalid Paykwik pricing input was accepted.');
 }
 $source=file_get_contents(dirname(__DIR__).'/database/migrations/013_paykwik_pricing.sql');
-foreach (['paykwik_eur_amount','paykwik_margin_percent','paykwik_exchange_rates','Paykwik 1000 Euro','55.3446'] as $needle) if (!str_contains($source,$needle)) throw new RuntimeException('Paykwik migration contract missing '.$needle);
+foreach (['paykwik_eur_amount','paykwik_margin_percent','paykwik_exchange_rates','SELECT 1000.00,7','55.3446'] as $needle) if (!str_contains($source,$needle)) throw new RuntimeException('Paykwik migration contract missing '.$needle);
 echo "Paykwik pricing contract checks passed.\n";
