@@ -53,7 +53,7 @@ foreach([['cart',$cart,['cart-layout','cart-line','cart-summary','coupon-form','
  foreach($hooks as $hook)if(!str_contains($view,$hook))throw new RuntimeException('Cart/checkout/order '.$name.' contract missing: '.$hook);
 }
 $account=file_get_contents($root.'/app/views/account/dashboard.php');
-foreach(['Premium customer account dashboard','account-heading::','account-stats article::after','account-form input:focus','account-section .responsive-table tbody tr:hover','ticket-reply','prefers-reduced-motion:reduce'] as $needle){
+foreach(['Premium customer account dashboard','.account-heading{','account-stats article::after','account-form input:focus','account-section .responsive-table tbody tr:hover','ticket-reply','prefers-reduced-motion:reduce'] as $needle){
  if(!str_contains($theme,$needle))throw new RuntimeException('Premium customer account style contract missing: '.$needle);
 }
 foreach(['account-page','account-stats','account-form','account/profile','account/password','Siparişlerim','account/ticket','Destek geçmişim','name="_token"'] as $hook){
