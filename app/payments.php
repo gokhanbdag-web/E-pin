@@ -141,9 +141,12 @@ function payment_mark_paid(int $orderId,string $provider,string $reference=''):v
 }
 function paytr_signature_matches(array $post,string $key,string $salt):bool {
     if($key===''||$salt==='') return false;
-    $raw=(string)($post['merchant_oid']??'').$salt.(string)($post['status']??'').(string)($post['total_amount']??'');
+    foreach(['merchant_oid','status','total_amount','hash'] as $field) {
+        if(!isset($post[$field])||!is_string($post[$field])||$post[$field]==='') return false;
+    }
+    $raw=$post['merchant_oid'].$salt.$post['status'].$post['total_amount'];
     $expected=base64_encode(hash_hmac('sha256',$raw,$key,true));
-    return isset($post['hash'])&&hash_equals($expected,(string)$post['hash']);
+    return hash_equals($expected,$post['hash']);
 }
 function paytr_callback_valid(array $post):bool {
     return paytr_signature_matches($post,payment_secret('paytr_merchant_key'),payment_secret('paytr_merchant_salt'));
