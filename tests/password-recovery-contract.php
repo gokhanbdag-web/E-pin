@@ -6,7 +6,7 @@ $login=file_get_contents($root.'/app/views/auth/login.php');
 $forgot=file_get_contents($root.'/app/views/auth/forgot-password.php');
 $reset=file_get_contents($root.'/app/views/auth/reset-password.php');
 $migration=file_get_contents($root.'/database/migrations/011_password_resets.sql');
-foreach(["if(\$path==='forgot-password'&&\$_SERVER['REQUEST_METHOD']==='POST')","if(\$path==='reset-password'&&\$_SERVER['REQUEST_METHOD']==='POST')","random_bytes(32)","hash('sha256',\$token)","expires_at>NOW()","used_at IS NULL","password_hash(\$new,PASSWORD_DEFAULT)","UPDATE password_resets SET used_at=NOW() WHERE user_id=? AND used_at IS NULL","DATE_ADD(NOW(),INTERVAL 1 HOUR)","mail(\$account['email']","(\$emailHash OR ip_hash=?)"] as $needle){
+foreach(["if(\$path==='forgot-password'&&\$_SERVER['REQUEST_METHOD']==='POST')","if(\$path==='reset-password'&&\$_SERVER['REQUEST_METHOD']==='POST')","random_bytes(32)","hash('sha256',\$token)","expires_at>NOW()","used_at IS NULL","password_hash(\$new,PASSWORD_DEFAULT)","UPDATE password_resets SET used_at=NOW() WHERE user_id=? AND used_at IS NULL","DATE_ADD(NOW(),INTERVAL 1 HOUR)","mail(\$account['email']","email_hash=? OR ip_hash=?"] as $needle){
  if(!str_contains($index,$needle))throw new RuntimeException('Customer password recovery security contract missing: '.$needle);
 }
 if(!str_contains($index,"flash('success',\$generic)"))throw new RuntimeException('Password recovery must not disclose whether an email address exists.');
