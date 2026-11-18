@@ -64,9 +64,10 @@ if($path==='payment/paytr-callback'&&$_SERVER['REQUEST_METHOD']==='POST'){
     $post=$_POST;
     if(!paytr_callback_valid($post)){http_response_code(400);echo 'PAYTR notification failed: bad hash';exit;}
     $orderNo=(string)($post['merchant_oid']??'');$q=db()->prepare("SELECT o.id,o.total,o.payment_status,pt.amount FROM payment_transactions pt JOIN orders o ON o.id=pt.order_id WHERE pt.provider='paytr' AND pt.provider_reference=? LIMIT 1");$q->execute([$orderNo]);$o=$q->fetch();
-    if(!$o||!payment_amount_matches($o['amount'],$o['total'])){http_response_code(404);echo 'ORDER NOT FOUND';exit;}
+    if(!$o){http_response_code(404);echo 'ORDER NOT FOUND';exit;}
+    if(!payment_amount_matches($o['amount'],$o['total'])){http_response_code(400);echo 'ORDER AMOUNT MISMATCH';exit;}
+    if(!paytr_callback_details_valid($post,$o['total'])){http_response_code(400);echo 'INVALID CALLBACK STATUS OR AMOUNT';exit;}
     if(($post['status']??'')==='success'){
-      if(!isset($post['total_amount'])||!ctype_digit((string)$post['total_amount'])||(int)$post['total_amount']!==(int)round((float)$o['total']*100)){http_response_code(400);echo 'AMOUNT MISMATCH';exit;}
       payment_mark_paid((int)$o['id'],'paytr',$orderNo);
     }else{payment_mark_failed((int)$o['id'],'paytr',$orderNo);}
     echo 'OK';exit;
