@@ -59,6 +59,8 @@ jobs:
         run: php tests/light-theme-contract.php
       - name: Mobile navigation scroll contract tests
         run: php tests/mobile-navigation-scroll-contract.php
+      - name: Admin product responsive layout contract tests
+        run: php tests/admin-products-responsive-contract.php
       - name: Customer password recovery contract tests
         run: php tests/password-recovery-contract.php
       - name: Login rate-limit integration tests
