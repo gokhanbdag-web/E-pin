@@ -52,5 +52,12 @@ foreach(['Premium cart, checkout and order journey','cart-line:hover','cart-summ
 foreach([['cart',$cart,['cart-layout','cart-line','cart-summary','coupon-form','cart/remove','cart/coupon']],['checkout',$checkout,['checkout-panel','_token','Siparişi oluştur']],['order',$order,['order-panel','payment/start/','name="provider"','delivered-code','refund_request']]] as [$name,$view,$hooks]){
  foreach($hooks as $hook)if(!str_contains($view,$hook))throw new RuntimeException('Cart/checkout/order '.$name.' contract missing: '.$hook);
 }
+$account=file_get_contents($root.'/app/views/account/dashboard.php');
+foreach(['Premium customer account dashboard','account-heading::','account-stats article::after','account-form input:focus','account-section .responsive-table tbody tr:hover','ticket-reply','prefers-reduced-motion:reduce'] as $needle){
+ if(!str_contains($theme,$needle))throw new RuntimeException('Premium customer account style contract missing: '.$needle);
+}
+foreach(['account-page','account-stats','account-form','account/profile','account/password','Siparişlerim','account/ticket','Destek geçmişim','name="_token"'] as $hook){
+ if(!str_contains($account,$hook))throw new RuntimeException('Customer account dashboard hook missing: '.$hook);
+}
 echo "Light theme, premium navigation, slider arrows, product cards and product detail contract checks passed.
 ";
