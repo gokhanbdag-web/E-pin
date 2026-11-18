@@ -6,6 +6,8 @@
     <title><?= e($title ?? '') ?></title>
     <?php $storefrontCss = APP_ROOT . '/assets/css/storefront.css'; ?>
     <link rel="stylesheet" href="<?= e(url('assets/css/storefront.css')) ?>?v=<?= is_file($storefrontCss) ? (int) filemtime($storefrontCss) : '1' ?>">
+    <?php $lightThemeCss = APP_ROOT . '/assets/css/light-theme.css'; ?>
+    <link rel="stylesheet" href="<?= e(url('assets/css/light-theme.css')) ?>?v=<?= is_file($lightThemeCss) ? (int) filemtime($lightThemeCss) : '1' ?>">
 </head>
 <body class="storefront-body">
 <?php if (!empty($actionMenus)): ?>
