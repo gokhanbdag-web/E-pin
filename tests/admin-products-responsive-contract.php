@@ -2,6 +2,7 @@
 declare(strict_types=1);
 $root = dirname(__DIR__);
 $layout = file_get_contents($root . '/app/views/layout-admin.php');
+$view = file_get_contents($root . '/app/views/admin/manage.php');
 $theme = file_get_contents($root . '/assets/css/light-theme.css');
 $checks = [
  'resource-specific admin body class' => str_contains($layout, 'admin-page-<?= e($resource) ?>'),
@@ -10,8 +11,13 @@ $checks = [
  'long description and upload span form' => str_contains($theme, '.admin-form>label:has(textarea)') && str_contains($theme, '.admin-form>label:has(input[type="file"])'),
  'mobile editor becomes one column' => str_contains($theme, 'grid-template-columns:minmax(0,1fr)'),
  'mobile actions fit viewport' => str_contains($theme, '.admin-page-products .admin-form>.form-actions button,'),
- 'table scroll is contained' => str_contains($theme, '.admin-page-products .table-wrap{') && str_contains($theme, 'overscroll-behavior-x:contain'),
- 'table has readable scroll width' => str_contains($theme, '.admin-page-products .table-wrap table{width:100%;min-width:620px}'),
+ 'product table has dedicated responsive wrapper' => str_contains($view, "products-table-wrap") && str_contains($view, "products-table"),
+ 'product cells expose mobile labels' => str_contains($view, "data-label=\"<?= \$resource==='products'?'Ürün':'' ?>\"") && str_contains($view, "data-label=\"<?= \$resource==='products'?'Durum':'' ?>\"") && str_contains($view, "data-label=\"<?= \$resource==='products'?'İşlem':'' ?>\""),
+ 'mobile list becomes stacked cards' => str_contains($theme, '.admin-page-products .products-table tbody{display:grid;') && str_contains($theme, '.admin-page-products .products-table tbody tr{'),
+ 'mobile product table removes desktop minimum width' => str_contains($theme, '.admin-page-products .products-table{') && str_contains($theme, 'min-width:0!important'),
+ 'mobile table headers remain accessible but visually hidden' => str_contains($theme, '.admin-page-products .products-table thead{') && str_contains($theme, 'clip:rect(0,0,0,0)'),
+ 'product action buttons are touch sized' => str_contains($theme, '.admin-page-products .products-table tbody td.actions a,') && str_contains($theme, 'min-height:42px'),
+ 'admin stylesheet cache version refreshed' => str_contains($layout, '?v=20261119-3'),
 ];
 foreach ($checks as $label => $passed) {
  if (!$passed) { fwrite(STDERR, "FAIL: {$label}\n"); exit(1); }
