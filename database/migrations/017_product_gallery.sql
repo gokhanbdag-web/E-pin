@@ -1,0 +1,1 @@
+-- @add-column products gallery_images TEXT NULL
