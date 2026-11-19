@@ -11,6 +11,8 @@ $checks = [
  'phone drawer remains scrollable' => str_contains($theme, 'overscroll-behavior-y:contain;touch-action:pan-y') && str_contains($theme, '100dvh - var(--admin-drawer-top,62px)'),
  'tablet and phone backdrop follows drawer' => str_contains($theme, 'inset:var(--admin-drawer-top,62px) 0 0!important'),
  'admin javascript cache refreshed' => str_contains($layout, 'admin.js') && str_contains($layout, '?v=20261119-8'),
+ 'product publishing action uses CSRF protected form' => str_contains($view, 'value="set_status"') && str_contains(file_get_contents($root . '/app/admin.php'), "in_array(\$status,['active','draft','inactive'],true)"),
+ 'product duplicate action starts draft' => str_contains($view, 'value="duplicate"') && str_contains(file_get_contents($root . '/app/admin.php'), "\$original['status']='draft'"),
  'resource-specific admin body class' => str_contains($layout, 'admin-page-<?= e($resource) ?>'),
  'product editor desktop grid' => str_contains($theme, 'grid-template-columns:repeat(2,minmax(0,1fr))'),
  'product fields can shrink' => str_contains($theme, '.admin-page-products .admin-form input,'),
