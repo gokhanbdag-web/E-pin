@@ -30,6 +30,8 @@ if(!app_is_home_path('home')||!app_is_home_path('')||app_is_home_path('pc-oyunla
 $categoryCases=[
  ['plain category slug','pc-oyunlari','pc-oyunlari'],
  ['nested path is not a category','pc-oyunlari/alt',null],
+ ['reserved home alias','home',null],
+ ['reserved legacy categor route','categor',null],
  ['reserved cart route','cart',null],
  ['reserved admin route','admin',null],
  ['reserved product route','product',null],
@@ -43,7 +45,7 @@ foreach($categoryCases as [$label,$path,$expected]){
 }
 $_SERVER['DOCUMENT_ROOT']=APP_ROOT;$_SERVER['SCRIPT_NAME']='/index.php';
 if(category_url('pc-oyunlari')!=='/pc-oyunlari')throw new RuntimeException('category_url must generate a root-level URL');
-foreach(['cart','admin','product','category','payment','order','page','seller','account','login','search','checkout'] as $reserved){
+foreach(['cart','admin','home','categor','product','category','payment','order','page','seller','account','login','search','checkout'] as $reserved){
  if(!category_slug_is_reserved($reserved))throw new RuntimeException('reserved category slug was accepted: '.$reserved);
 }
 echo "Root and subdirectory routing checks passed.\n";
