@@ -6,9 +6,18 @@ function setMenuOpen(open,restoreFocus){
  n.classList.toggle('is-open',open);
  if(o)o.classList.toggle('is-visible',open);
  document.body.classList.toggle('admin-menu-open',open);
- if(open){var first=n.querySelector('a[href],button:not([disabled])');if(first)first.focus();}
+ if(open){syncAdminDrawerTop();var first=n.querySelector('a[href],button:not([disabled])');if(first)first.focus();}
  if(!open&&restoreFocus)b.focus();
 }
+function syncAdminDrawerTop(){
+ var header=document.querySelector('.admin-topbar');
+ if(!header)return;
+ var bottom=Math.max(0,Math.ceil(header.getBoundingClientRect().bottom));
+ document.documentElement.style.setProperty('--admin-drawer-top',bottom+'px');
+}
+syncAdminDrawerTop();
+window.addEventListener('resize',syncAdminDrawerTop);
+if(window.visualViewport)window.visualViewport.addEventListener('resize',syncAdminDrawerTop);
 b.addEventListener('click',function(){setMenuOpen(b.getAttribute('aria-expanded')!=='true',false);});
 if(o)o.addEventListener('click',function(){setMenuOpen(false,true);});
 n.addEventListener('click',function(e){if(e.target.closest('a'))setMenuOpen(false,false);});

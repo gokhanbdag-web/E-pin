@@ -872,3 +872,16 @@ hr{border:0;border-top:1px solid var(--line)}
  .admin-body .admin-content .actions{flex-wrap:wrap}
  .admin-body .admin-content .actions form{max-width:100%}
 }
+
+/* Admin phone/tablet acceptance: drawer follows the real topbar height. */
+@media(max-width:760px){
+ .admin-body .admin-side.is-open{
+  top:var(--admin-drawer-top,62px)!important;
+  max-height:calc(100dvh - var(--admin-drawer-top,62px))!important;
+  overscroll-behavior-y:contain;touch-action:pan-y;
+  -webkit-overflow-scrolling:touch;
+ }
+ .admin-body .admin-nav-backdrop.is-visible{
+  inset:var(--admin-drawer-top,62px) 0 0!important;
+ }
+}
