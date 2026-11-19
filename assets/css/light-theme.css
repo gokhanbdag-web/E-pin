@@ -707,6 +707,31 @@ hr{border:0;border-top:1px solid var(--line)}
  .admin-page-products .admin-image-preview{width:100%;max-width:100%}
 }
 
+/* Product editor: keep native upload controls and image removal usable on phones. */
+.admin-page-products .admin-form>label>input[type="file"]{
+ display:block;width:100%;min-width:0;max-width:100%;box-sizing:border-box;
+ overflow:hidden;white-space:normal;line-height:1.5;
+}
+.admin-page-products .admin-form>label>input[type="file"]::file-selector-button{
+ max-width:100%;min-height:44px;margin:0 12px 8px 0;
+ padding:10px 14px;white-space:normal;cursor:pointer;
+}
+.admin-page-products .admin-form .image-remove{
+ display:flex;align-items:center;gap:10px;min-width:0;
+}
+.admin-page-products .admin-form .image-remove input[type="checkbox"]{
+ flex:0 0 20px;width:20px;height:20px;min-width:20px;margin:0;
+}
+.admin-page-products .admin-form .image-remove span{
+ min-width:0;overflow-wrap:normal;word-break:normal;line-height:1.5;
+}
+@media(max-width:760px){
+ .admin-page-products .admin-form>label>input[type="file"]::file-selector-button{
+  display:block;width:100%;margin:0 0 8px;
+ }
+ .admin-page-products .admin-form .image-remove{padding:8px 0;min-height:44px}
+}
+
 /* Product catalogue: use real stacked cards on narrow screens instead of a clipped desktop table. */
 .admin-page-products .products-table-wrap{min-width:0;width:100%;max-width:100%}
 .admin-page-products .products-table{width:100%;min-width:0}
