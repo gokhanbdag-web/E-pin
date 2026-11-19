@@ -87,6 +87,6 @@ $adminLayout=file_get_contents($root.'/app/views/layout-admin.php');
 foreach(['.admin-body .admin-content .table-wrap{','overflow-x:auto;overscroll-behavior-x:contain','.admin-body .admin-content .ticket-admin-form','.admin-body .admin-content .page-head{flex-wrap:wrap','.admin-body .admin-content .form-actions{flex-wrap:wrap','.admin-body .admin-content .actions{flex-wrap:wrap'] as $needle){
  if(!str_contains($theme,$needle))throw new RuntimeException('Admin mobile overflow contract missing: '.$needle);
 }
-if(!str_contains($adminLayout,'?v=20261119-7'))throw new RuntimeException('Admin CSS cache version not refreshed.');
+if(!str_contains($adminLayout,'?v=20261119-8'))throw new RuntimeException('Admin CSS cache version not refreshed.');
 echo "Light theme, premium navigation, slider arrows, product cards and product detail contract checks passed.
 ";
