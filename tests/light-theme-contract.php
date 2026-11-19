@@ -82,5 +82,11 @@ foreach(['Premium marketplace seller workspace','.seller-shortcuts{','.seller-pr
 foreach([['dashboard',$sellerDashboard,['seller-shortcuts','seller/products','seller/orders','seller/earnings','pendingEarnings','availableBalance']],['products',$sellerProducts,['seller-product-form','save_product','save_variant','import_codes','name="codes"','seller/products?edit=']],['orders',$sellerOrders,['Satış siparişleri','sellerOrders','payment_status','automatic_delivered']],['earnings',$sellerEarnings,['Kazançlarım','withdrawalRows','ledgerRows','name="amount"','name="note"']],['apply',$sellerApply,['seller-apply-form','sellerApplication','shop_name','_token']]] as [$name,$view,$hooks]){
  foreach($hooks as $hook)if(!str_contains($view,$hook))throw new RuntimeException('Seller '.$name.' workflow hook missing: '.$hook);
 }
+
+$adminLayout=file_get_contents($root.'/app/views/layout-admin.php');
+foreach(['.admin-body .admin-content .table-wrap{','overflow-x:auto;overscroll-behavior-x:contain','.admin-body .admin-content .ticket-admin-form','.admin-body .admin-content .page-head{flex-wrap:wrap','.admin-body .admin-content .form-actions{flex-wrap:wrap','.admin-body .admin-content .actions{flex-wrap:wrap'] as $needle){
+ if(!str_contains($theme,$needle))throw new RuntimeException('Admin mobile overflow contract missing: '.$needle);
+}
+if(!str_contains($adminLayout,'?v=20261119-7'))throw new RuntimeException('Admin CSS cache version not refreshed.');
 echo "Light theme, premium navigation, slider arrows, product cards and product detail contract checks passed.
 ";

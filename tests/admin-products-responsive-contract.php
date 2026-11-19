@@ -24,7 +24,7 @@ $checks = [
  'mobile product inputs prevent zoom and overflow' => str_contains($theme, '.admin-page-products .admin-form>label>textarea{') && str_contains($theme, 'box-sizing:border-box;font-size:16px'),
  'mobile product text remains horizontal and readable' => str_contains($theme, 'overflow-wrap:break-word;word-break:normal'),
  'small-screen action buttons wrap labels' => str_contains($theme, 'white-space:normal;overflow-wrap:break-word'),
- 'admin stylesheet cache version refreshed' => str_contains($layout, '?v=20261119-6'),
+ 'admin stylesheet cache version refreshed' => str_contains($layout, '?v=20261119-7'),
 ];
 foreach ($checks as $label => $passed) {
  if (!$passed) { fwrite(STDERR, "FAIL: {$label}\n"); exit(1); }

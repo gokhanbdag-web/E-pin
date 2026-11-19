@@ -852,3 +852,23 @@ hr{border:0;border-top:1px solid var(--line)}
   min-width:0;max-width:100%;white-space:normal;overflow-wrap:break-word;
  }
 }
+
+/* Shared admin mobile overflow containment; preserve existing design. */
+.admin-body .admin-shell,.admin-body .admin-content,.admin-body .admin-panel,.admin-body .page-head{min-width:0;max-width:100%}
+.admin-body .admin-content .table-wrap{min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.admin-body .admin-content .table-wrap table{max-width:none}
+.admin-body .admin-content .admin-form,.admin-body .admin-content .ticket-admin-form{min-width:0;max-width:100%;box-sizing:border-box}
+.admin-body .admin-content .admin-form :is(input,select,textarea),.admin-body .admin-content .ticket-admin-form :is(input,select,textarea){min-width:0;max-width:100%;box-sizing:border-box}
+.admin-body .admin-content .page-head>*,.admin-body .admin-content .form-actions>*{min-width:0}
+@media(max-width:760px){
+ .admin-body .admin-content .page-head{flex-wrap:wrap;align-items:flex-start;gap:12px}
+ .admin-body .admin-content .page-head>div{min-width:0;max-width:100%}
+ .admin-body .admin-content .page-head h1{overflow-wrap:break-word}
+ .admin-body .admin-content .primary-link{max-width:100%;white-space:normal;text-align:center}
+ .admin-body .admin-content .admin-form,.admin-body .admin-content .ticket-admin-form{width:100%;padding:14px}
+ .admin-body .admin-content .admin-form :is(input,select,textarea),.admin-body .admin-content .ticket-admin-form :is(input,select,textarea){font-size:16px}
+ .admin-body .admin-content .form-actions{flex-wrap:wrap;gap:10px}
+ .admin-body .admin-content .form-actions :is(button,a){max-width:100%;white-space:normal}
+ .admin-body .admin-content .actions{flex-wrap:wrap}
+ .admin-body .admin-content .actions form{max-width:100%}
+}
