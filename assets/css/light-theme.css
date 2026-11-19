@@ -816,3 +816,39 @@ hr{border:0;border-top:1px solid var(--line)}
  .admin-page-products .products-table .actions .link-danger{width:100%}
  .admin-page-products .admin-content .page-head>.primary-link{width:100%}
 }
+
+/* Product create/edit: preserve readable fields on 320–480px screens. */
+.admin-page-products .admin-form>label{
+ max-width:100%;min-width:0;overflow-wrap:normal;word-break:normal;
+}
+.admin-page-products .admin-form>label>input,
+.admin-page-products .admin-form>label>select,
+.admin-page-products .admin-form>label>textarea{
+ display:block;width:100%;min-width:0;max-width:100%;
+ box-sizing:border-box;font-size:16px;
+}
+.admin-page-products .admin-form>label>textarea{
+ resize:vertical;min-height:100px;overflow-wrap:break-word;
+}
+.admin-page-products .admin-form>label>small{
+ min-width:0;max-width:100%;overflow-wrap:break-word;word-break:normal;
+}
+@media(max-width:480px){
+ .admin-page-products .admin-form{
+  width:100%;min-width:0;max-width:100%;
+  padding:12px;grid-template-columns:minmax(0,1fr);
+ }
+ .admin-page-products .admin-form>label{
+  width:100%;min-width:0;max-width:100%;grid-column:1;
+ }
+ .admin-page-products .admin-image-preview{
+  width:100%;max-width:100%;min-width:0;
+ }
+ .admin-page-products .admin-form>.form-actions{
+  min-width:0;grid-column:1;grid-template-columns:minmax(0,1fr);
+ }
+ .admin-page-products .admin-form>.form-actions button,
+ .admin-page-products .admin-form>.form-actions a{
+  min-width:0;max-width:100%;white-space:normal;overflow-wrap:break-word;
+ }
+}
