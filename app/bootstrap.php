@@ -63,7 +63,7 @@ function app_route_path_from_uri(string $requestUri,string $basePath):string{
 }
 function category_slug_is_reserved(string $slug):bool{
  $slug=strtolower(trim($slug,'/'));
- return $slug===''||str_contains($slug,'/')||in_array($slug,['account','admin','cart','category','checkout','forgot-password','login','logout','order','page','payment','product','reset-password','search','seller'],true);
+ return $slug===''||str_contains($slug,'/')||in_array($slug,['account','admin','cart','categor','category','checkout','home','forgot-password','login','logout','order','page','payment','product','reset-password','search','seller'],true);
 }
 function category_route_slug_from_path(string $path):?string{
  $path=trim($path,'/');if($path===''||str_contains($path,'/'))return null;
