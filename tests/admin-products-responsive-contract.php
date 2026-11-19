@@ -17,7 +17,8 @@ $checks = [
  'mobile product table removes desktop minimum width' => str_contains($theme, '.admin-page-products .products-table{') && str_contains($theme, 'min-width:0!important'),
  'mobile table headers remain accessible but visually hidden' => str_contains($theme, '.admin-page-products .products-table thead{') && str_contains($theme, 'clip:rect(0,0,0,0)'),
  'product action buttons are touch sized' => str_contains($theme, '.admin-page-products .products-table tbody td.actions a,') && str_contains($theme, 'min-height:42px'),
- 'admin stylesheet cache version refreshed' => str_contains($layout, '?v=20261119-3'),
+ 'product image caption stays horizontal on mobile' => str_contains($theme, '.admin-page-products .admin-image-preview>small{') && str_contains($theme, 'writing-mode:horizontal-tb') && str_contains($theme, 'white-space:nowrap') && str_contains($theme, 'word-break:normal') && str_contains($theme, 'max-width:calc(100% - 16px)'),
+ 'admin stylesheet cache version refreshed' => str_contains($layout, '?v=20261119-4'),
 ];
 foreach ($checks as $label => $passed) {
  if (!$passed) { fwrite(STDERR, "FAIL: {$label}\n"); exit(1); }

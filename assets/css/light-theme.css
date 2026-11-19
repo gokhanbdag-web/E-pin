@@ -661,6 +661,15 @@ hr{border:0;border-top:1px solid var(--line)}
 .admin-content .status,.admin-content .badge{color:#334155}
 
 
+/* Keep the product image caption horizontal and readable on narrow screens. */
+.admin-page-products .admin-image-preview{position:relative;display:block;min-width:0}
+.admin-page-products .admin-image-preview>small{
+ position:absolute;left:8px;bottom:6px;display:inline-block;width:max-content;
+ max-width:calc(100% - 16px);padding:4px 8px;white-space:nowrap;
+ word-break:normal;overflow-wrap:normal;writing-mode:horizontal-tb;
+ transform:none;line-height:1.35;text-orientation:mixed;z-index:2;
+}
+ 
 /* Product catalogue and editor: keep all controls inside the viewport. */
 .admin-page-products .admin-content{min-width:0;max-width:100%;overflow-x:clip}
 .admin-page-products .page-head{min-width:0;flex-wrap:wrap}
