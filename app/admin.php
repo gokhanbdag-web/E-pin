@@ -224,6 +224,28 @@ foreach($m['fields'] as $field=>$label){$v=trim((string)($_POST[$field]??''));if
  if($field==='usage_limit')$v=(string)max(0,(int)$v);
  if(in_array($field,['starts_at','expires_at'],true)){$v=trim(str_replace('T',' ',$v));if($v!==''){$ts=strtotime($v);if($ts===false)throw new RuntimeException('Kupon tarihi geçersiz.');$v=date('Y-m-d H:i:s',$ts);}else $v=null;}
 }if($field==='sort_order')$v=(string)(int)$v;if($field==='category_id')$v=$v===''?null:(string)(int)$v;if($field==='slug'){$ascii=function_exists('iconv')?iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$v):$v;$v=trim(preg_replace('/[^a-z0-9-]+/','-',strtolower($ascii?:$v)),'-');}if($resource==='categories'&&$field==='slug'&&($v===''||category_slug_is_reserved($v)))throw new RuntimeException('Kategori kısa adı boş olamaz ve sistem adresleriyle çakışamaz.');$data[$field]=$v;}if($resource==='products'){if(!empty($data['paykwik_eur_amount'])){$rate=paykwik_latest_rate(db());if(!$rate)throw new RuntimeException('Paykwik fiyatı için TCMB Euro kuru bulunamadı.');$data['paykwik_enabled']=1;$data['price']=number_format(paykwik_calculate_price((float)$data['paykwik_eur_amount'],(float)$rate['rate'],(float)$data['paykwik_margin_percent']),2,'.','');}else{$data['paykwik_enabled']=0;$data['paykwik_eur_amount']=null;}}if($id){$set=implode(',',array_map(fn($k)=>$k.'=?',array_keys($data)));$vals=array_values($data);$vals[]=$id;db()->prepare('UPDATE '.$m['table'].' SET '.$set.' WHERE id=?')->execute($vals);}else{$keys=array_keys($data);db()->prepare('INSERT INTO '.$m['table'].'('.implode(',',$keys).') VALUES('.implode(',',array_fill(0,count($keys),'?')).')')->execute(array_values($data));}flash('success',$m['title'].' kaydedildi.');}
+ elseif($resource==='products'&&$action==='set_status'){
+  $id=(int)($_POST['id']??0);$status=(string)($_POST['status']??'');
+  if($id<1||!in_array($status,['active','draft','inactive'],true))throw new RuntimeException('Geçersiz ürün veya yayın durumu.');
+  $q=db()->prepare('UPDATE products SET status=? WHERE id=?');$q->execute([$status,$id]);
+  if($q->rowCount()===0){$check=db()->prepare('SELECT id FROM products WHERE id=?');$check->execute([$id]);if(!$check->fetchColumn())throw new RuntimeException('Ürün bulunamadı.');}
+  flash('success','Ürün yayın durumu güncellendi.');
+ }
+ elseif($resource==='products'&&$action==='duplicate'){
+  $id=(int)($_POST['id']??0);if($id<1)throw new RuntimeException('Kopyalanacak ürünü seçin.');
+  $pdo=db();$pdo->beginTransaction();
+  try{
+   $q=$pdo->prepare('SELECT * FROM products WHERE id=? FOR UPDATE');$q->execute([$id]);$original=$q->fetch(PDO::FETCH_ASSOC);
+   if(!$original)throw new RuntimeException('Ürün bulunamadı.');
+   unset($original['id'],$original['created_at'],$original['updated_at']);
+   $original['name']=mb_substr((string)$original['name'],0,235).' (Kopya)';
+   $original['slug']=rtrim(substr((string)$original['slug'],0,170),'-').'-copy-'.bin2hex(random_bytes(5));
+   $original['status']='draft';
+   $keys=array_keys($original);
+   $pdo->prepare('INSERT INTO products ('.implode(',',$keys).') VALUES ('.implode(',',array_fill(0,count($keys),'?')).')')->execute(array_values($original));
+   $pdo->commit();flash('success','Ürün taslak olarak çoğaltıldı.');
+  }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
+ }
  elseif(isset($meta[$resource])&&$action==='delete'){$id=(int)($_POST['id']??0);if($id)db()->prepare('DELETE FROM '.$meta[$resource]['table'].' WHERE id=?')->execute([$id]);flash('success','Kayıt silindi.');}
  else throw new RuntimeException('Geçersiz işlem.');
 }catch(Throwable $e){flash('error',$e->getMessage());}redirect(url('admin?section='.$resource));}
