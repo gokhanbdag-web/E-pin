@@ -38,3 +38,5 @@ foreach ($checks as $label => $passed) {
  if (!$passed) { fwrite(STDERR, "FAIL: {$label}\n"); exit(1); }
 }
 echo "Admin product responsive layout contract checks passed (" . count($checks) . ").\n";
+
+$metadataAdmin=file_get_contents(__DIR__.'/../app/admin.php');$metadataProduct=file_get_contents(__DIR__.'/../app/views/store/product.php');foreach(['usage_instructions','platform','region','currency'] as $field)if(!str_contains($metadataAdmin,"'".$field."'"))throw new RuntimeException('Product metadata missing: '.$field);if(!str_contains($metadataProduct,'product-instructions')||!str_contains($metadataProduct,'category_url('))throw new RuntimeException('Product detail metadata or canonical breadcrumb missing');
