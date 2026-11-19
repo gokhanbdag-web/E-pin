@@ -18,7 +18,9 @@ $checks = [
  'mobile table headers remain accessible but visually hidden' => str_contains($theme, '.admin-page-products .products-table thead{') && str_contains($theme, 'clip:rect(0,0,0,0)'),
  'product action buttons are touch sized' => str_contains($theme, '.admin-page-products .products-table tbody td.actions a,') && str_contains($theme, 'min-height:42px'),
  'product image caption stays horizontal on mobile' => str_contains($theme, '.admin-page-products .admin-image-preview>small{') && str_contains($theme, 'writing-mode:horizontal-tb') && str_contains($theme, 'white-space:nowrap') && str_contains($theme, 'word-break:normal') && str_contains($theme, 'max-width:calc(100% - 16px)'),
- 'admin stylesheet cache version refreshed' => str_contains($layout, '?v=20261119-4'),
+ 'mobile upload button remains touch sized' => str_contains($theme, '.admin-page-products .admin-form>label>input[type="file"]::file-selector-button{') && str_contains($theme, 'min-height:44px') && str_contains($theme, 'display:block;width:100%;margin:0 0 8px'),
+ 'image removal checkbox keeps a usable width' => str_contains($theme, '.admin-page-products .admin-form .image-remove input[type="checkbox"]{') && str_contains($theme, 'flex:0 0 20px'),
+ 'admin stylesheet cache version refreshed' => str_contains($layout, '?v=20261119-5'),
 ];
 foreach ($checks as $label => $passed) {
  if (!$passed) { fwrite(STDERR, "FAIL: {$label}\n"); exit(1); }
