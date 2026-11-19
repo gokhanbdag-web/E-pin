@@ -753,12 +753,13 @@ hr{border:0;border-top:1px solid var(--line)}
  .admin-page-products .products-table tbody td strong{min-width:0;overflow-wrap:anywhere}
  .admin-page-products .products-table tbody td small{overflow-wrap:anywhere}
  .admin-page-products .products-table tbody td.actions{
-  display:grid;grid-template-columns:minmax(68px,28%) minmax(0,1fr);align-items:start;
+  display:grid;grid-template-columns:minmax(0,1fr);align-items:stretch;
  }
  .admin-page-products .products-table tbody td.actions .actions,
- .admin-page-products .products-table tbody td.actions form{min-width:0}
  .admin-page-products .products-table tbody td.actions a,
- .admin-page-products .products-table tbody td.actions .link-danger{min-height:42px}
+ .admin-page-products .products-table tbody td.actions form{min-width:0;width:100%}
+ .admin-page-products .products-table tbody td.actions a,
+ .admin-page-products .products-table tbody td.actions .link-danger{min-height:42px;width:100%}
  .admin-page-products .products-table tbody td.actions form{display:inline-flex}
  .admin-page-products .admin-form{grid-template-columns:minmax(0,1fr);padding:14px;gap:0}
  .admin-page-products .admin-form>label{grid-column:1;min-width:0}
