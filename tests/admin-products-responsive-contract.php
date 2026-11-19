@@ -5,6 +5,8 @@ $layout = file_get_contents($root . '/app/views/layout-admin.php');
 $view = file_get_contents($root . '/app/views/admin/manage.php');
 $theme = file_get_contents($root . '/assets/css/light-theme.css');
 $checks = [
+ 'inventory variant selector receives controller data' => str_contains(file_get_contents($root . '/app/admin.php'), chr(39).'inventoryVariants'.chr(39).'=>'.'$inventoryVariants') && str_contains($view, 'foreach(($inventoryVariants??[]) as $variant)'),
+ 'product variant editor receives product options' => str_contains(file_get_contents($root . '/app/admin.php'), chr(39).'variantProducts'.chr(39).'=>'.'$variantProducts') && str_contains($view, 'foreach(($variantProducts??[]) as $vp)'),
  'resource-specific admin body class' => str_contains($layout, 'admin-page-<?= e($resource) ?>'),
  'product editor desktop grid' => str_contains($theme, 'grid-template-columns:repeat(2,minmax(0,1fr))'),
  'product fields can shrink' => str_contains($theme, '.admin-page-products .admin-form input,'),
