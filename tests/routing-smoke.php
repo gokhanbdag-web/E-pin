@@ -49,3 +49,5 @@ foreach(['cart','admin','home','categor','product','category','payment','order',
  if(!category_slug_is_reserved($reserved))throw new RuntimeException('reserved category slug was accepted: '.$reserved);
 }
 echo "Root and subdirectory routing checks passed.\n";
+
+$categoryAdmin=file_get_contents(__DIR__.'/../app/admin.php');$categoryView=file_get_contents(__DIR__.'/../app/views/admin/manage.php');$categoryStore=file_get_contents(__DIR__.'/../index.php');foreach(['parent_id','Kategori döngüsü oluşturulamaz.'] as $needle)if(!str_contains($categoryAdmin,$needle))throw new RuntimeException('Category hierarchy admin contract missing: '.$needle);if(!str_contains($categoryView,'name="parent_id"'))throw new RuntimeException('Category parent selector missing');if(!str_contains($categoryStore,'$descendants'))throw new RuntimeException('Subcategory product listing missing');
