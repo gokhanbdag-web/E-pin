@@ -1,0 +1,6 @@
+-- @add-column products platform VARCHAR(100) NULL
+-- @add-column products region VARCHAR(100) NULL
+-- @add-column products currency VARCHAR(3) NOT NULL DEFAULT 'TRY'
+-- @add-column products usage_instructions TEXT NULL
+-- @add-column product_variants platform VARCHAR(100) NULL
+-- @add-column product_variants region VARCHAR(100) NULL
