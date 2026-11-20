@@ -170,6 +170,7 @@ function iyzico_checkout_result_valid(array $result,string $orderNo,mixed $total
         && strtoupper($result['currency'])==='TRY'
         && hash_equals($orderNo,$result['conversationId'])
         && hash_equals($orderNo,$result['basketId'])
+        && is_numeric($total) && is_finite((float)$total) && (float)$total>=0
         && payment_amount_matches($result['price']??null,$total)
         && payment_amount_matches($result['paidPrice']??null,$total);
 }
