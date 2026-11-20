@@ -83,7 +83,7 @@ function payment_mark_failed(int $orderId,string $provider,string $reference):vo
         $q=$pdo->prepare("SELECT id,status FROM payment_transactions WHERE order_id=? AND provider=? AND provider_reference=? LIMIT 1 FOR UPDATE");
         $q->execute([$orderId,$provider,$reference]);$attempt=$q->fetch();
         if(!$attempt){$pdo->commit();return;}
-        if($attempt['status']==='pending')$pdo->prepare("UPDATE payment_transactions SET status='failed' WHERE id=? AND status='pending'")->execute([(int)$attempt['id']]);
+        if($attempt['status']!=='pending'){$pdo->commit();return;}if($attempt['status']==='pending')$pdo->prepare("UPDATE payment_transactions SET status='failed' WHERE id=? AND status='pending'")->execute([(int)$attempt['id']]);
         $q=$pdo->prepare("SELECT COUNT(*) FROM payment_transactions WHERE order_id=? AND status='pending'");
         $q->execute([$orderId]);$hasPending=(int)$q->fetchColumn()>0;
         if(!$hasPending&&$order['payment_status']!=='paid'&&in_array($order['status'],['pending','payment_failed'],true)){
@@ -110,6 +110,7 @@ function payment_mark_paid(int $orderId,string $provider,string $reference=''):v
         if(!$attempt)throw new RuntimeException('Ödeme denemesi siparişle eşleştirilemedi.');
         if(!payment_amount_matches($attempt['amount'],$o['total']))throw new RuntimeException('Ödeme denemesi tutarı sipariş tutarıyla eşleşmiyor.');
         if($attempt['status']==='success'){$pdo->commit();return;}
+        if(!in_array($attempt['status'],['pending','failed','expired'],true)){$pdo->commit();return;}
         if($o['status']==='refunded'){
             $pdo->prepare("UPDATE payment_transactions SET status='late_payment_review' WHERE id=?")->execute([(int)$attempt['id']]);
             $pdo->commit();error_log('Payment callback arrived after refund for order '.$orderId.'; provider refund reconciliation required.');return;
