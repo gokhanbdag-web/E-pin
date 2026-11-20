@@ -157,6 +157,7 @@ function paytr_callback_details_valid(array $post,mixed $orderTotal):bool {
     return in_array($status,['success','failed'],true)
         && is_scalar($amount)
         && ctype_digit((string)$amount)
+        && is_numeric($orderTotal) && is_finite((float)$orderTotal) && (float)$orderTotal>=0
         && (int)$amount===(int)round((float)$orderTotal*100);
 }
 function iyzico_checkout_result_valid(array $result,string $orderNo,mixed $total):bool {
