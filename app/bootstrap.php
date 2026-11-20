@@ -229,9 +229,9 @@ function fulfill_paid_order(int $orderId):void{
    $sold=$pdo->prepare("SELECT COUNT(*) FROM inventory_codes WHERE product_id=? AND ((variant_id IS NULL AND ? IS NULL) OR variant_id=?) AND sold_order_id=? AND status='sold'");$sold->execute([(int)$item['product_id'],$vid,$vid,$orderId]);$needed=max(0,$qty-(int)$sold->fetchColumn());if($needed===0)continue;
    $codes=$pdo->prepare("SELECT id,code_ciphertext,code_nonce,code_tag FROM inventory_codes WHERE product_id=? AND ((variant_id IS NULL AND ? IS NULL) OR variant_id=?) AND reserved_order_id=? AND status='reserved' ORDER BY id LIMIT ".$needed." FOR UPDATE");$codes->execute([(int)$item['product_id'],$vid,$vid,$orderId]);$rows=$codes->fetchAll(PDO::FETCH_ASSOC);
    if(count($rows)<$needed)throw new RuntimeException('Ödeme alınmış sipariş için ayrılmış kod stoğu yetersiz.');
-   $delivery=$pdo->prepare("INSERT IGNORE INTO order_deliveries(order_id,order_item_id,inventory_code_id,code_ciphertext,code_nonce,code_tag) VALUES(?,?,?,?,?,?)");
-   $upd=$pdo->prepare("UPDATE inventory_codes SET status='sold',sold_order_id=?,reserved_order_id=NULL,reserved_until=NULL WHERE id=? AND status='reserved'");
-   foreach($rows as $code){$delivery->execute([$orderId,(int)$item['order_item_id'],(int)$code['id'],$code['code_ciphertext'],$code['code_nonce'],$code['code_tag']]);$upd->execute([$orderId,(int)$code['id']]);if($upd->rowCount()!==1)throw new RuntimeException('Dijital kod teslimat sırasında başka bir işlem tarafından değiştirildi.');}
+   $delivery=$pdo->prepare("INSERT INTO order_deliveries(order_id,order_item_id,inventory_code_id,code_ciphertext,code_nonce,code_tag) VALUES(?,?,?,?,?,?)");
+   $upd=$pdo->prepare("UPDATE inventory_codes SET status='sold',sold_order_id=?,reserved_order_id=NULL,reserved_until=NULL WHERE id=? AND status='reserved' AND reserved_order_id=?");
+   foreach($rows as $code){$upd->execute([$orderId,(int)$code['id'],$orderId]);if($upd->rowCount()!==1)throw new RuntimeException('Dijital kod teslimat sırasında başka bir işlem tarafından değiştirildi.');$delivery->execute([$orderId,(int)$item['order_item_id'],(int)$code['id'],$code['code_ciphertext'],$code['code_nonce'],$code['code_tag']]);if($delivery->rowCount()!==1)throw new RuntimeException('Dijital kod teslimat kaydı oluşturulamadı.');}
   }
   $newStatus=$hasManual?'partially_delivered':($hasAutomatic?'delivered':'processing');$pdo->prepare("UPDATE orders SET status=? WHERE id=?")->execute([$newStatus,$orderId]);$pdo->commit();
  }catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
