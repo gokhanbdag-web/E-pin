@@ -41,13 +41,13 @@ function payment_http_post(string $url,array $payload,array $headers=[]):array {
 function cancel_unpaid_order(int $orderId,?int $ownerId=null):void {
     $pdo=db();$pdo->beginTransaction();
     try {
-        $sql='SELECT id,payment_status,status,coupon_code FROM orders WHERE id=?'.($ownerId!==null?' AND user_id=?':'').' FOR UPDATE';
+        $sql='SELECT id,payment_status,status,coupon_code,coupon_usage_released FROM orders WHERE id=?'.($ownerId!==null?' AND user_id=?':'').' FOR UPDATE';
         $q=$pdo->prepare($sql);$q->execute($ownerId!==null?[$orderId,$ownerId]:[$orderId]);$order=$q->fetch();
         if(!$order)throw new RuntimeException('Sipariş bulunamadı.');
         if($order['payment_status']==='paid')throw new RuntimeException('Ödemesi alınmış sipariş iptal edilemez; iade talebi oluşturun.');
         if(!in_array($order['status'],['pending','payment_failed'],true))throw new RuntimeException('Bu sipariş artık iptal edilemez.');
         $pdo->prepare("UPDATE inventory_codes SET status='available',reserved_order_id=NULL,reserved_until=NULL WHERE reserved_order_id=? AND status='reserved'")->execute([$orderId]);
-        $pdo->prepare("UPDATE orders SET status='cancelled',coupon_usage_released=1 WHERE id=?")->execute([$orderId]);if(!empty($order['coupon_code']))$pdo->prepare('UPDATE coupons SET usage_count=GREATEST(usage_count-1,0) WHERE code=?')->execute([$order['coupon_code']]);
+        $pdo->prepare("UPDATE orders SET status='cancelled',coupon_usage_released=1 WHERE id=?")->execute([$orderId]);if(!empty($order['coupon_code'])&&(int)$order['coupon_usage_released']===0)$pdo->prepare('UPDATE coupons SET usage_count=GREATEST(usage_count-1,0) WHERE code=?')->execute([$order['coupon_code']]);
         $pdo->prepare("UPDATE payment_transactions SET status='cancelled' WHERE order_id=? AND status='pending'")->execute([$orderId]);
         $pdo->commit();
     } catch(Throwable $e) {if($pdo->inTransaction())$pdo->rollBack();throw $e;}
@@ -59,6 +59,20 @@ function payment_attempt_reserve(int $orderId,string $provider,float $amount,str
         $q=$pdo->prepare('SELECT payment_status,status FROM orders WHERE id=? FOR UPDATE');
         $q->execute([$orderId]);$order=$q->fetch();
         if(!$order||$order['payment_status']==='paid'||!in_array($order['status'],['pending','payment_failed'],true)) throw new RuntimeException('Sipariş yeni bir ödemeye uygun değil.');
+        if($order['status']==='payment_failed'){
+            $items=$pdo->prepare("SELECT oi.product_id,oi.variant_id,oi.quantity FROM order_items oi JOIN products p ON p.id=oi.product_id WHERE oi.order_id=? AND p.delivery_type='automatic' ORDER BY oi.product_id,oi.variant_id,oi.id FOR UPDATE");
+            $items->execute([$orderId]);
+            foreach($items->fetchAll() as $item){
+                $qty=(int)$item['quantity'];
+                $lock=$pdo->prepare("SELECT id FROM inventory_codes WHERE product_id=? AND ((variant_id IS NULL AND ? IS NULL) OR variant_id=?) AND status='available' ORDER BY id LIMIT ".$qty." FOR UPDATE");
+                $lock->execute([(int)$item['product_id'],$item['variant_id'],$item['variant_id']]);
+                $ids=$lock->fetchAll(PDO::FETCH_COLUMN);
+                if(count($ids)!==$qty)throw new RuntimeException('Yeniden ödeme için yeterli dijital kod stoğu yok.');
+                $reserve=$pdo->prepare("UPDATE inventory_codes SET status='reserved',reserved_order_id=?,reserved_until=DATE_ADD(NOW(),INTERVAL 30 MINUTE) WHERE id=? AND status='available'");
+                foreach($ids as $id){$reserve->execute([$orderId,(int)$id]);if($reserve->rowCount()!==1)throw new RuntimeException('Stok rezervasyonu değişti.');}
+            }
+            $pdo->prepare("UPDATE orders SET status='pending',payment_status='unpaid' WHERE id=? AND status='payment_failed'")->execute([$orderId]);
+        }
         $pdo->prepare("UPDATE payment_transactions SET status='expired' WHERE order_id=? AND status='pending' AND created_at<DATE_SUB(NOW(),INTERVAL 30 MINUTE)")->execute([$orderId]);
         $q=$pdo->prepare("SELECT id FROM payment_transactions WHERE order_id=? AND status='pending' LIMIT 1 FOR UPDATE");
         $q->execute([$orderId]);
