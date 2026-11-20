@@ -1,0 +1,3 @@
+<?php
+declare(strict_types=1);
+$a=file_get_contents(dirname(__DIR__).'/app/admin.php');$v=file_get_contents(dirname(__DIR__).'/app/views/admin/manage.php');$index=file_get_contents(dirname(__DIR__).'/index.php');foreach(['$lowStockThreshold=5','$lowStockCount=0','$outOfStockCount=0',"delivery_type']!=='automatic'"] as $n){if(!str_contains($a,$n))throw new RuntimeException('Low stock alert missing: '.$n);}foreach(['Stok tükendi','Düşük stok','Stok uyarıları'] as $n){if(!str_contains($v,$n))throw new RuntimeException('Stock UI missing: '.$n);}if(!str_contains($index,"status='available'" )||!str_contains($index,'için yeterli kod stoğu kalmadı'))throw new RuntimeException('Checkout stock guard missing');
