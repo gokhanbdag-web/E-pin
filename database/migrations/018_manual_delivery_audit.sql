@@ -1,0 +1,2 @@
+-- @add-column order_deliveries admin_user_id BIGINT UNSIGNED NULL
+-- @index order_deliveries idx_delivery_admin admin_user_id
