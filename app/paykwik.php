@@ -52,8 +52,9 @@ function paykwik_latest_rate(PDO $pdo, bool $refreshIfNewDay = true): ?array {
     $attempt = $pdo->prepare("SELECT setting_value FROM settings WHERE setting_key='paykwik_rate_last_attempt' LIMIT 1");
     $attempt->execute();
     $lastAttempt = (string) ($attempt->fetchColumn() ?: '');
-    $shouldRefresh = $refreshIfNewDay && (!$cached || ($cached['rate_date'] < $today && $now->format('H:i') >= '15:35' && $lastAttempt !== $today));
-    if ($cached && $cached['rate_date'] < $today && $lastAttempt === $today) $cached['stale'] = true;
+    $attemptedToday = substr($lastAttempt, 0, 10) === $today;
+    $shouldRefresh = $refreshIfNewDay && (!$cached || ($cached['rate_date'] < $today && $now->format('H:i') >= '15:35' && !$attemptedToday));
+    if ($cached && $cached['rate_date'] < $today && $attemptedToday) $cached['stale'] = true;
     if ($shouldRefresh) {
         $pdo->prepare("INSERT INTO settings(setting_key,setting_value) VALUES('paykwik_rate_last_attempt',?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)")->execute([$now->format('Y-m-d H:i:s')]);
         try {
