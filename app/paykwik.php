@@ -7,7 +7,11 @@ function paykwik_calculate_price(float $eurAmount, float $rate, float $marginPer
     if (!is_finite($eurAmount) || !is_finite($rate) || !is_finite($marginPercent) || $eurAmount <= 0 || $rate <= 0 || $marginPercent < 0 || $marginPercent > 500) {
         throw new InvalidArgumentException('Paykwik fiyatlandırma değerleri geçersiz.');
     }
-    return round($eurAmount * $rate * (1 + $marginPercent / 100), 2, PHP_ROUND_HALF_UP);
+    $price = round($eurAmount * $rate * (1 + $marginPercent / 100), 2, PHP_ROUND_HALF_UP);
+    if (!is_finite($price) || $price > 9999999999.99) {
+        throw new InvalidArgumentException('Paykwik satış fiyatı veritabanı sınırını aşıyor.');
+    }
+    return $price;
 }
 
 function paykwik_fetch_tcmb_rate(): array {
