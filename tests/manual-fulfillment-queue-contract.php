@@ -1,0 +1,3 @@
+<?php
+declare(strict_types=1);
+$a=file_get_contents(dirname(__DIR__).'/app/admin.php');$v=file_get_contents(dirname(__DIR__).'/app/views/admin/manage.php');foreach(["p.delivery_type='manual'","o.payment_status='paid'","o.status IN ('processing','partially_delivered','manual_review')",'oi.quantity>COALESCE(d.delivered_count,0)','ORDER BY o.created_at ASC,o.id ASC','inventory_code_id IS NULL'] as $n){if(!str_contains($a,$n))throw new RuntimeException('Manual queue query missing: '.$n);}foreach(['Manuel teslimat kuyruğu','Bekleyen kod','Teslimat ekranına git','Bekleyen manuel teslimat bulunmuyor'] as $n){if(!str_contains($v,$n))throw new RuntimeException('Manual queue view missing: '.$n);}
